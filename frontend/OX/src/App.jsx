@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar/Navbar.jsx";
 import Hero from "./components/Hero/Hero.jsx";
-import Login from "./pages/Login.jsx";
 import Programs from "./components/Programs/Programs.jsx";
 import TopPrograms from "./components/TopPrograms/TopPrograms.jsx";
 import Banner from "./components/Banner/Banner.jsx";
@@ -16,6 +15,7 @@ import "aos/dist/aos.css";
 const App = () => {
   const [orderPopup, setOrderPopup] = useState(false);
   const programsRef = useRef(null);
+  const location = useLocation();
 
   const handleOrderPopup = () => {
     setOrderPopup(!orderPopup);
@@ -31,17 +31,32 @@ const App = () => {
     AOS.refresh();
   }, []);
 
+  const isHomePage = location.pathname === "/";
+
   return (
     <div className="bg-white dark:bg-gray-900 dark:text-white duration-200">
       <Navbar handleOrderPopup={handleOrderPopup} />
-      <Hero handleOrderPopup={handleOrderPopup} programsRef={programsRef} />
-      <div ref={programsRef}>
-        <Programs />
+
+      <div className="content-container min-h-screen">
+        {isHomePage ? (
+          <>
+            <Hero
+              handleOrderPopup={handleOrderPopup}
+              programsRef={programsRef}
+            />
+            <div ref={programsRef}>
+              <Programs />
+            </div>
+            <TopPrograms handleOrderPopup={handleOrderPopup} />
+            <Banner />
+            <Notification />
+            <Testimonials />
+          </>
+        ) : (
+          <Outlet />
+        )}
       </div>
-      <TopPrograms handleOrderPopup={handleOrderPopup} />
-      <Banner />
-      <Notification />
-      <Testimonials />
+
       <Footer />
       <Popup orderPopup={orderPopup} setOrderPopup={setOrderPopup} />
     </div>

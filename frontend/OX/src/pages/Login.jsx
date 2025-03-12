@@ -29,9 +29,6 @@ const Login = () => {
       const data = await response.json();
       console.log("Login Data:", data);
 
-      // In the handleLogin function, replace the email verification block:
-
-      // Check if email is verified
       if (data?.success === true) {
         // Check if email is verified
         if (data.data.user.isVerified === false) {
@@ -51,14 +48,16 @@ const Login = () => {
         localStorage.setItem("isLoggedIn", true);
         // Store JWT token in session storage
         sessionStorage.setItem("token", data.data.token);
-        alert("Login Success");
-        navigate("/");
+        toast.success("Login Success");
+
+        // Changed this line to navigate to UserInfo page
+        navigate("/user-info");
       } else {
-        alert(data.message || "Login Failed");
+        toast.error(data.message || "Login Failed");
       }
     } catch (error) {
       console.error("Backend Error:", error);
-      alert("An error occurred during login");
+      toast.error("An error occurred during login");
     } finally {
       setIsSubmitting(false);
     }

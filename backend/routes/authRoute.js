@@ -1,4 +1,15 @@
 import express from "express";
+
+import {
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+  getUserByEmail,
+  verifyUser,
+} from "../controllers/UsersController.js";
+
 import {
   registerController,
   loginController,
@@ -7,9 +18,39 @@ import {
   verifyCode,
 } from "../controllers/authController.js";
 
-import { getSupplementController } from "../controllers/SupplementController.js";
+import {
+  getHealthConditionController,
+  getHealthConditionByIdController,
+  createHealthConditionController,
+  updateHealthConditionController,
+  deleteHealthConditionController,
+} from "../controllers/HealthConditionController.js";
 
-import { UserHealthCondition } from "../controllers/UserHealthCondition.js";
+// Import User Health Condition controller functions
+import {
+  getAllUserHealthConditions,
+  getUserHealthConditions,
+  getUsersByHealthCondition,
+  getUserHealthConditionById,
+  addUserHealthCondition,
+  removeUserHealthCondition,
+  updateUserHealthConditions,
+} from "../controllers/UserHealthCondition.js";
+
+import {
+  getAllUserInfo,
+  getUserInfoById,
+  getUserInfoByUserId,
+  createUserInfo,
+  updateUserInfo,
+  deleteUserInfo,
+  deleteUserInfoByUserId,
+} from "../controllers/UserInfoController.js";
+
+import {
+  getSupplementController,
+  getSupplementByIdController,
+} from "../controllers/SupplementController.js";
 
 import {
   getPlanController,
@@ -29,6 +70,15 @@ import con from "../server.js";
 
 //router object
 const router = express.Router();
+
+// User Routes
+router.get("/users", getAllUsers);
+router.get("/users/:id", getUserById);
+router.get("/users/email/:email", getUserByEmail);
+router.post("/users", createUser);
+router.put("/users/:id", updateUser);
+router.delete("/users/:id", deleteUser);
+router.post("/verify", verifyUser);
 
 // Public Routes
 router.post("/register", registerController);
@@ -176,8 +226,8 @@ router.get("/check-verification", requireSignIn, async (req, res) => {
 // router.get("/supplement", requireSignIn, getSupplementController);
 
 //unprotected routes
-router.get("/healthcondition", UserHealthCondition);
 router.get("/supplement", getSupplementController);
+router.get("/supplement/:id", getSupplementByIdController);
 
 // // Plan routes - protected
 // router.get("/plans", requireSignIn, getPlanController);
@@ -192,5 +242,35 @@ router.get("/usernotes", getUserNotesController);
 router.post("/usernotes", createUserNotesController);
 // Add this to your authRoute.js routes
 router.post("/verify-code", verifyCode);
+
+router.get("/user-info", getAllUserInfo);
+router.get("/user-info/:id", getUserInfoById);
+router.get("/users/:user_id/info", getUserInfoByUserId);
+router.post("/user-info", createUserInfo);
+router.put("/user-info/:id", updateUserInfo);
+router.delete("/user-info/:id", deleteUserInfo);
+router.delete("/users/:user_id/info", deleteUserInfoByUserId);
+
+// Health Condition Routes
+router.get("/health-conditions", getHealthConditionController);
+router.get("/health-conditions/:id", getHealthConditionByIdController);
+router.post("/health-conditions", createHealthConditionController);
+router.put("/health-conditions/:id", updateHealthConditionController);
+router.delete("/health-conditions/:id", deleteHealthConditionController);
+
+// User Health Condition routes
+router.get("/user-health", getAllUserHealthConditions); // GET all
+router.get("/users/:user_id/health-conditions", getUserHealthConditions); // GET by user_id
+router.get("/health-conditions/:condition_id/users", getUsersByHealthCondition); // GET by condition_id
+router.get(
+  "/users/:user_id/health-conditions/:condition_id",
+  getUserHealthConditionById
+); // GET by both IDs
+router.post("/user-health", addUserHealthCondition); // POST new association
+router.put("/users/:user_id/health-conditions", updateUserHealthConditions); // PUT (update)
+router.delete(
+  "/users/:user_id/health-conditions/:condition_id",
+  removeUserHealthCondition
+);
 
 export default router;
