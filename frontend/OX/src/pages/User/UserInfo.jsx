@@ -7,6 +7,7 @@ import {
   Select,
   Modal,
   Input,
+  InputNumber,
   Button,
   DatePicker,
   Radio,
@@ -66,7 +67,7 @@ const UserInfo = () => {
     setIsModalVisible(false);
   };
 
-  // Handle health condition selection
+  // Handle health condition selection - just update local state, no API call
   const handleHealthConditionChange = (values) => {
     setSelectedConditions(values);
   };
@@ -75,67 +76,117 @@ const UserInfo = () => {
   const onFinish = async (values) => {
     try {
       setLoading(true);
+      const userId = localStorage.getItem("userId");
+
+      console.log("Submitting form with user ID:", userId);
+      console.log("Selected health conditions:", selectedConditions);
 
       // First, create user info
       const userInfoData = {
-        user_id: localStorage.getItem("userId"), // Make sure you have this stored after login
+        user_id: userId,
         gender: values.gender,
         DOB: values.dob.format("YYYY-MM-DD"),
-        weight: parseInt(values.weight),
-        height: parseInt(values.height),
+        weight: values.weight,
+        height: values.height,
         goal: values.goal,
+        neck_size: values.neck_size || null,
+        shoulder_size: values.shoulder_size || null,
+        forearm_size: values.forearm_size || null,
+        biceps_size: values.biceps_size || null,
+        hip_size: values.hip_size || null,
+        thigh_size: values.thigh_size || null,
+        claves_size: values.claves_size || null,
       };
 
-      // Create user info
-      const userInfoResponse = await axios.post(
-        "http://localhost:8000/api/v1/auth/user-info",
-        userInfoData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-          },
-        }
-      );
+      console.log("Submitting user info:", userInfoData);
 
-      if (userInfoResponse.data.success) {
-        // If health conditions were selected, associate them with the user
-        if (selectedConditions.length > 0) {
-          // Update user's health conditions
-          const healthConditionResponse = await axios.put(
-            `http://localhost:8000/api/v1/auth/users/${localStorage.getItem(
-              "userId"
-            )}/health-conditions`,
-            { condition_ids: selectedConditions },
-            {
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${sessionStorage.getItem("token")}`,
-              },
-            }
-          );
-
-          if (!healthConditionResponse.data.success) {
-            toast.warning(
-              "User info saved, but health conditions could not be saved"
-            );
+      try {
+        // Create user info
+        const userInfoResponse = await axios.post(
+          "http://localhost:8000/api/v1/auth/user-info",
+          userInfoData,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${sessionStorage.getItem("token")}`,
+            },
           }
+        );
+
+        console.log("User info response:", userInfoResponse.data);
+
+        if (userInfoResponse.data.success) {
+          // If health conditions were selected, associate them with the user
+          if (selectedConditions.length > 0) {
+            try {
+              // For each selected condition, create a user-health association
+              for (const conditionId of selectedConditions) {
+                await axios.post(
+                  "http://localhost:8000/api/v1/auth/user-health",
+                  {
+                    user_id: userId,
+                    condition_id: conditionId,
+                  },
+                  {
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${sessionStorage.getItem(
+                        "token"
+                      )}`,
+                    },
+                  }
+                );
+              }
+
+              console.log("Health conditions saved successfully");
+            } catch (healthError) {
+              console.error("Error saving health conditions:", healthError);
+
+              // Log more details about the error
+              if (healthError.response) {
+                console.error(
+                  "Error response data:",
+                  healthError.response.data
+                );
+                console.error(
+                  "Error response status:",
+                  healthError.response.status
+                );
+              }
+
+              toast.warning(
+                "User info saved, but there was an error saving health conditions"
+              );
+            }
+          }
+
+          toast.success("User Information Collected!", {
+            position: "top-center",
+            autoClose: 3000,
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: false,
+            draggable: true,
+            progress: undefined,
+          });
+
+          // Navigate to the home page or dashboard
+          navigate("/");
+        } else {
+          toast.error("Failed to save user information");
+        }
+      } catch (apiError) {
+        console.error("API Error:", apiError);
+
+        // Log more details about the error
+        if (apiError.response) {
+          console.error("Error response data:", apiError.response.data);
+          console.error("Error response status:", apiError.response.status);
         }
 
-        toast.success("User Information Collected!", {
-          position: "top-center",
-          autoClose: 3000,
-          hideProgressBar: true,
-          closeOnClick: true,
-          pauseOnHover: false,
-          draggable: true,
-          progress: undefined,
-        });
-
-        // Navigate to the home page or dashboard
-        navigate("/");
-      } else {
-        toast.error("Failed to save user information");
+        toast.error(
+          apiError.response?.data?.message || "Failed to save user information"
+        );
       }
     } catch (error) {
       console.error("Error saving user information:", error);
@@ -232,15 +283,17 @@ const UserInfo = () => {
                       type: "number",
                       min: 30,
                       max: 300,
-                      message: "Please enter a valid weight",
+                      message: "Please enter a valid weight between 30 and 300",
                     },
                   ]}
                 >
-                  <Input
-                    type="number"
+                  <InputNumber
+                    style={{ width: "100%" }}
                     size="large"
                     className="rounded-lg"
                     placeholder="Enter your weight in kg"
+                    min={30}
+                    max={300}
                   />
                 </Form.Item>
 
@@ -254,15 +307,18 @@ const UserInfo = () => {
                       type: "number",
                       min: 100,
                       max: 250,
-                      message: "Please enter a valid height",
+                      message:
+                        "Please enter a valid height between 100 and 250 cm",
                     },
                   ]}
                 >
-                  <Input
-                    type="number"
+                  <InputNumber
+                    style={{ width: "100%" }}
                     size="large"
                     className="rounded-lg"
                     placeholder="Enter your height in cm"
+                    min={100}
+                    max={250}
                   />
                 </Form.Item>
 
@@ -312,6 +368,76 @@ const UserInfo = () => {
                       </div>
                     </div>
                   </Radio.Group>
+                </Form.Item>
+
+                {/* Neck Size */}
+                <Form.Item label="Neck Size (cm)" name="neck_size">
+                  <InputNumber
+                    style={{ width: "100%" }}
+                    size="large"
+                    className="rounded-lg"
+                    placeholder="Enter your neck size in cm"
+                  />
+                </Form.Item>
+
+                {/* Shoulder Size */}
+                <Form.Item label="Shoulder Size (cm)" name="shoulder_size">
+                  <InputNumber
+                    style={{ width: "100%" }}
+                    size="large"
+                    className="rounded-lg"
+                    placeholder="Enter your shoulder size in cm"
+                  />
+                </Form.Item>
+
+                {/* Forearm Size */}
+                <Form.Item label="Forearm Size (cm)" name="forearm_size">
+                  <InputNumber
+                    style={{ width: "100%" }}
+                    size="large"
+                    className="rounded-lg"
+                    placeholder="Enter your forearm size in cm"
+                  />
+                </Form.Item>
+
+                {/* Biceps Size */}
+                <Form.Item label="Biceps Size (cm)" name="biceps_size">
+                  <InputNumber
+                    style={{ width: "100%" }}
+                    size="large"
+                    className="rounded-lg"
+                    placeholder="Enter your biceps size in cm"
+                  />
+                </Form.Item>
+
+                {/* Hip Size */}
+                <Form.Item label="Hip Size (cm)" name="hip_size">
+                  <InputNumber
+                    style={{ width: "100%" }}
+                    size="large"
+                    className="rounded-lg"
+                    placeholder="Enter your hip size in cm"
+                  />
+                </Form.Item>
+
+                {/* Thigh Size */}
+                <Form.Item label="Thigh Size (cm)" name="thigh_size">
+                  <InputNumber
+                    style={{ width: "100%" }}
+                    size="large"
+                    className="rounded-lg"
+                    placeholder="Enter your thigh size in cm"
+                  />
+                </Form.Item>
+
+                {/* Calves Size */}
+                <Form.Item label="Calves Size (cm)" name="claves_size">
+                  <InputNumber
+                    style={{ width: "100%" }}
+                    size="large"
+                    className="rounded-lg"
+                    placeholder="Enter your calves size in cm"
+                  />
                 </Form.Item>
 
                 {/* Submit Button */}

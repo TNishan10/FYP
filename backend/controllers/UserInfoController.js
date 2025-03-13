@@ -95,7 +95,7 @@ export const createUserInfo = async (req, res) => {
       hip_size,
       thigh_size,
       claves_size,
-      user_info_id,
+      // Remove user_info_id from destructuring
     } = req.body;
 
     // Validate required fields
@@ -119,13 +119,13 @@ export const createUserInfo = async (req, res) => {
       });
     }
 
-    // Insert new user info
+    // Insert new user info - REMOVE user_info_id from the field list
     const query = `
       INSERT INTO public."user_info" (
         user_id, gender, DOB, weight, height, goal, 
         neck_size, shoulder_size, forearm_size, biceps_size, 
-        hip_size, thigh_size, claves_size, user_info_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        hip_size, thigh_size, claves_size
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
     `;
 
@@ -143,7 +143,7 @@ export const createUserInfo = async (req, res) => {
       hip_size || null,
       thigh_size || null,
       claves_size || null,
-      user_info_id || null,
+      // Remove user_info_id from values array
     ];
 
     const result = await con.query(query, values);

@@ -46,6 +46,9 @@ const Login = () => {
         // Rest of your success handling code...
         localStorage.setItem("userEmail", data.data.user.email);
         localStorage.setItem("isLoggedIn", true);
+
+        localStorage.setItem("userId", data.data.user.id);
+
         // Store JWT token in session storage
         sessionStorage.setItem("token", data.data.token);
         toast.success("Login Success");

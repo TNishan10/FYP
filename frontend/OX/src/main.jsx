@@ -19,7 +19,9 @@ import Register from "./pages/Register.jsx";
 import Supplement from "./pages/Supplement.jsx";
 import UserInfo from "./pages/User/UserInfo.jsx";
 import App from "./App.jsx";
-
+import Recipe from "./pages/Recipe.jsx";
+import RecipeDetail from "./pages/RecipeDetail.jsx";
+import AboutUs from "./pages/AboutUs.jsx";
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
@@ -32,12 +34,15 @@ const router = createBrowserRouter(
         <Route path="register" element={<Register />} />
         <Route path="verify-email" element={<VerifyEmail />} />
         <Route path="supplements" element={<Supplement />} />
+        <Route path="aboutUs" element={<AboutUs />} />
         <Route
           path="aboutUs"
           element={
             <div className="container mx-auto p-8">About Us Content</div>
           }
         />
+        <Route path="recipes" element={<Recipe />} />
+        <Route path="recipe/:recipeId" element={<RecipeDetail />} />
       </Route>
     </>
   )
