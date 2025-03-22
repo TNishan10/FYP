@@ -65,6 +65,12 @@ import {
 import { requireSignIn, isAdmin } from "../middlewares/authMiddleware.js";
 // Add these new imports for email verification testing
 import { sendVerificationEmail } from "../utility/emailService.js";
+import {
+  forgotPassword,
+  verifyResetOTP,
+  resetPassword,
+} from "../controllers/passwordResetController.js";
+
 import crypto from "crypto";
 import con from "../server.js";
 
@@ -87,6 +93,7 @@ router.post("/verify-email", verifyEmail);
 router.post("/resend-verification", resendVerification);
 
 // Email verification testing routes
+
 // Test sending an email manually
 router.post("/test-email", async (req, res) => {
   try {
@@ -220,6 +227,10 @@ router.get("/check-verification", requireSignIn, async (req, res) => {
     });
   }
 });
+
+router.post("/forgot-password", forgotPassword);
+router.post("/verify-otp", verifyResetOTP);
+router.post("/reset-password", resetPassword);
 
 // // Protected Routes
 // router.get("/healthcondition", requireSignIn, UserHealthCondition);
