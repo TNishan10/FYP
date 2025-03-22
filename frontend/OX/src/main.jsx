@@ -22,6 +22,7 @@ import App from "./App.jsx";
 import Recipe from "./pages/Recipe.jsx";
 import RecipeDetail from "./pages/RecipeDetail.jsx";
 import AboutUs from "./pages/AboutUs.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
@@ -35,6 +36,7 @@ const router = createBrowserRouter(
         <Route path="verify-email" element={<VerifyEmail />} />
         <Route path="supplements" element={<Supplement />} />
         <Route path="aboutUs" element={<AboutUs />} />
+        <Route path="dashboard" element={<Dashboard />} />
         <Route
           path="aboutUs"
           element={

@@ -37,20 +37,27 @@ const Hero = ({ handleOrderPopup, programsRef }) => {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => {
-    AOS.init();
+  // Function to check login status
+  const checkLoginStatus = () => {
     const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
     setIsLoggedIn(loggedInStatus);
+  };
 
-    const handleStorageChange = () => {
-      const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
-      setIsLoggedIn(loggedInStatus);
-    };
+  useEffect(() => {
+    AOS.init();
 
-    window.addEventListener("storage", handleStorageChange);
+    // Check login status initially
+    checkLoginStatus();
+
+    // Listen for custom event for login status changes from Navbar
+    window.addEventListener("loginStatusChanged", checkLoginStatus);
+
+    // Also listen for storage events (when localStorage changes in other tabs)
+    window.addEventListener("storage", checkLoginStatus);
 
     return () => {
-      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("loginStatusChanged", checkLoginStatus);
+      window.removeEventListener("storage", checkLoginStatus);
     };
   }, []);
 

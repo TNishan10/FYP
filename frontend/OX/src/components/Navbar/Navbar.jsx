@@ -1,16 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Logo from "../../assets/logo.png";
 import "../../index.css";
 import { IoMdSearch } from "react-icons/io";
 import { FaCaretDown } from "react-icons/fa6";
+import { FaUserCircle } from "react-icons/fa";
+import { MdDashboard, MdLogout, MdSettings } from "react-icons/md";
+import { CgGym } from "react-icons/cg";
+import { BsPersonVcard } from "react-icons/bs";
 import DarkMode from "./DarkMode";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 
 const Menu = [
   {
     id: 1,
     name: "Home",
-    link: "/#",
+    link: "/",
   },
   {
     id: 2,
@@ -54,35 +58,81 @@ const DropDownLinks = [
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
+  const mobileMenuRef = useRef(null);
 
+  // Check login status whenever component renders or location changes
   useEffect(() => {
+    checkLoginStatus();
+
+    // Listen for custom event for login status changes
+    window.addEventListener("loginStatusChanged", checkLoginStatus);
+
+    // Close dropdown when clicking outside
+    const handleClickOutside = (event) => {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target)
+      ) {
+        setShowProfileMenu(false);
+      }
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(event.target)
+      ) {
+        setShowMobileMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      window.removeEventListener("loginStatusChanged", checkLoginStatus);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [location]); // Re-check when location changes
+
+  // Function to check login status
+  const checkLoginStatus = () => {
     const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
     setIsLoggedIn(loggedInStatus);
 
-    const handleStorageChange = () => {
-      const loggedInStatus = localStorage.getItem("isLoggedIn") === "true";
-      setIsLoggedIn(loggedInStatus);
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("isLoggedIn");
-    sessionStorage.removeItem("token");
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    setIsLoggedIn(false);
-    navigate("/");
+    if (loggedInStatus) {
+      const email = localStorage.getItem("userEmail");
+      if (email) {
+        const name = email.split("@")[0];
+        setUserName(name.charAt(0).toUpperCase() + name.slice(1));
+      }
+    }
   };
 
   const handleLogin = () => {
     navigate("/login");
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userId");
+    sessionStorage.removeItem("token");
+    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    setIsLoggedIn(false);
+    setShowProfileMenu(false);
+
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new Event("loginStatusChanged"));
+
+    navigate("/");
+  };
+
+  const navigateToDashboard = () => {
+    navigate("/dashboard");
+    setShowProfileMenu(false);
   };
 
   return (
@@ -94,9 +144,13 @@ const Navbar = () => {
       <div className="bg-primary/40 py-2">
         <div className="container flex justify-between items-center">
           <div>
-            <a href="#" className="font-bold text-2xl sm:text-3xl flex gap-2">
-              <img src={Logo} alt="logo" className="w-16" />- Fit
-            </a>
+            <NavLink
+              to="/"
+              className="font-bold text-2xl sm:text-3xl flex items-center gap-2"
+            >
+              <img src={Logo} alt="logo" className="w-16" />
+              <span>OX-Fit</span>
+            </NavLink>
           </div>
 
           {/* search bar and login/logout button */}
@@ -124,14 +178,68 @@ const Navbar = () => {
               <DarkMode />
             </div>
 
-            {/* Login/Logout button */}
+            {/* Login/Profile section - SIMPLIFIED */}
             {isLoggedIn ? (
-              <button
-                onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-700 text-white py-2 px-4 rounded-full ml-4"
-              >
-                Logout
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Profile Button with Dropdown */}
+                <div ref={profileMenuRef} className="relative">
+                  <button
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    className={`flex items-center gap-2 bg-gradient-to-r from-primary to-secondary text-white py-1.5 px-4 rounded-full hover:shadow-md transition-all duration-200 ${
+                      showProfileMenu ? "shadow-lg" : ""
+                    }`}
+                    aria-label="User menu"
+                  >
+                    <span className="text-sm font-medium hidden sm:block">
+                      {userName || "User"}
+                    </span>
+                    <FaUserCircle className="text-lg" />
+                  </button>
+
+                  {/* Profile dropdown menu */}
+                  {showProfileMenu && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 z-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+                      <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Signed in as
+                        </p>
+                        <p className="font-medium truncate">
+                          {localStorage.getItem("userEmail") ||
+                            "user@example.com"}
+                        </p>
+                      </div>
+
+                      <NavLink
+                        to="/dashboard"
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center w-full px-4 py-2 text-gray-800 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-700"
+                      >
+                        <MdDashboard className="mr-2 text-primary" />
+                        Dashboard
+                      </NavLink>
+
+                      <NavLink
+                        to="/profile"
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center w-full px-4 py-2 text-gray-800 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-700"
+                      >
+                        <BsPersonVcard className="mr-2 text-primary" />
+                        My Profile
+                      </NavLink>
+
+                      <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center w-full px-4 py-2 text-gray-800 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-700"
+                        >
+                          <MdLogout className="mr-2 text-red-500" />
+                          Sign out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : (
               <button
                 onClick={handleLogin}
@@ -147,16 +255,14 @@ const Navbar = () => {
       <div className="flex justify-center">
         <ul className="sm:flex hidden items-center gap-4">
           {Menu.map((data) => (
-            <NavLink to={data.link} key={data.id}>
-              <li key={data.id}>
-                <a
-                  href={data.link}
-                  className="inline-block px-4 hover:text-primary duration-200"
-                >
-                  {data.name}
-                </a>
-              </li>
-            </NavLink>
+            <li key={data.id}>
+              <NavLink
+                to={data.link}
+                className="inline-block px-4 hover:text-primary duration-200"
+              >
+                {data.name}
+              </NavLink>
+            </li>
           ))}
           {/* simple drop down button and links */}
           <li className="group relative cursor-pointer">
@@ -174,12 +280,12 @@ const Navbar = () => {
               <ul>
                 {DropDownLinks.map((data) => (
                   <li key={data.id}>
-                    <a
-                      href={data.link}
+                    <NavLink
+                      to={data.link}
                       className="inline-block w-full rounded-md p-2 hover:bg-primary/20"
                     >
                       {data.name}
-                    </a>
+                    </NavLink>
                   </li>
                 ))}
               </ul>
