@@ -41,6 +41,8 @@ const Login = () => {
     .fill(0)
     .map(() => React.createRef());
 
+  // Update the handleLogin function in your Login.jsx
+
   const handleLogin = async (values) => {
     try {
       setIsSubmitting(true);
@@ -68,18 +70,46 @@ const Login = () => {
           return;
         }
 
-        // Rest of your success handling code...
+        // Store user data
         localStorage.setItem("userEmail", data.data.user.email);
         localStorage.setItem("isLoggedIn", true);
-
         localStorage.setItem("userId", data.data.user.id);
-
-        // Store JWT token in session storage
         sessionStorage.setItem("token", data.data.token);
+
         toast.success("Login Success");
 
-        // Changed this line to navigate to UserInfo page
-        navigate("/user-info");
+        // Check if user has already submitted their info
+        try {
+          const userId = data.data.user.id;
+          const userInfoResponse = await fetch(
+            `http://localhost:8000/api/v1/auth/users/${userId}/info`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${data.data.token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          const userInfoData = await userInfoResponse.json();
+
+          if (
+            userInfoResponse.ok &&
+            userInfoData.success &&
+            userInfoData.data
+          ) {
+            // User info exists, navigate to home
+            navigate("/");
+          } else {
+            // No user info yet, navigate to user info page
+            navigate("/user-info");
+          }
+        } catch (error) {
+          console.error("Error checking user info:", error);
+          // Default to user info page if check fails
+          navigate("/user-info");
+        }
       } else {
         toast.error(data.message || "Login Failed");
       }

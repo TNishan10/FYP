@@ -1,4 +1,5 @@
 import con from "../server.js";
+import pool from "../db.js";
 
 // Get all user info records
 export const getAllUserInfo = async (req, res) => {
@@ -54,8 +55,9 @@ export const getUserInfoByUserId = async (req, res) => {
   try {
     const { user_id } = req.params;
 
-    const query = 'SELECT * FROM public."user_info" WHERE user_id = $1';
-    const result = await con.query(query, [user_id]);
+    // Use proper casting for UUID in PostgreSQL
+    const query = `SELECT * FROM public."user_info" WHERE user_id::text = $1`;
+    const result = await pool.query(query, [user_id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
