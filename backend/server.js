@@ -46,6 +46,18 @@ app.use(
   })
 );
 
+// If you don't have express-fileupload already, add this too
+import fileUpload from "express-fileupload";
+app.use(
+  fileUpload({
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  })
+);
+
+// Make sure your body parser limit is increased
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
+
 app.use(cookieParser());
 
 // Routes
