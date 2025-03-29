@@ -53,3 +53,67 @@ export const getSupplementByIdController = async (req, res) => {
     });
   }
 };
+
+// Add this function to your existing controller file
+
+export const createSupplementController = async (req, res) => {
+  const {
+    name, // Will map to supplement_name
+    company,
+    description,
+    tips,
+    energy,
+    protein,
+    carbs,
+    fat,
+    image_url,
+  } = req.body;
+
+  // Validate required fields
+  if (!name || !description || !company) {
+    return res.status(400).json({
+      success: false,
+      message: "Supplement name, description, and company are required fields",
+    });
+  }
+
+  try {
+    // Prepare query with parameterized values - using CORRECT column names from database
+    const query = `
+      INSERT INTO public."supplement" 
+      (supplement_name, company, description, tips, energy, protein, carbs, fat, image_url)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `;
+
+    // Values array for parameterized query
+    const values = [
+      name,
+      company,
+      description,
+      tips || "",
+      energy || "0 kcal",
+      protein || "0g",
+      carbs || "0g",
+      fat || "0g",
+      image_url || "",
+    ];
+
+    // Execute the query
+    const result = await con.query(query, values);
+
+    // Return the newly created supplement
+    res.status(201).json({
+      success: true,
+      message: "Supplement created successfully!",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error creating supplement:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating supplement",
+      error: error.message,
+    });
+  }
+};

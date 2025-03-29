@@ -50,6 +50,7 @@ import {
 import {
   getSupplementController,
   getSupplementByIdController,
+  createSupplementController,
 } from "../controllers/SupplementController.js";
 
 import {
@@ -261,6 +262,7 @@ router.post("/reset-password", resetPassword);
 //unprotected routes
 router.get("/supplement", getSupplementController);
 router.get("/supplement/:id", getSupplementByIdController);
+router.post("/supplement", requireSignIn, isAdmin, createSupplementController);
 
 // // Plan routes - protected
 // router.get("/plans", requireSignIn, getPlanController);

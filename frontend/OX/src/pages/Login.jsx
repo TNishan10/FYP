@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Modal, Spin } from "antd";
+import { useAuth } from "../contexts/AuthContext.jsx";
+import { jwtDecode } from "jwt-decode";
 
 const colors = {
   primary: "060606",
@@ -15,6 +17,8 @@ const colors = {
 
 const Login = () => {
   const navigate = useNavigate();
+  const auth = useAuth();
+  const contextLogin = auth?.login;
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [otpTimerActive, setOtpTimerActive] = useState(false);
   const [otpExpiryTime, setOtpExpiryTime] = useState(300);
@@ -87,10 +91,10 @@ const Login = () => {
     .fill(0)
     .map(() => React.createRef());
 
-  // Update the handleLogin function in your Login.jsx
+  // Update the handleLogin function
   const handleLogin = async (values) => {
     try {
-      // Check if account is locked
+      // Check if account is locked (keep your existing check)
       const lockedUntil = localStorage.getItem("account_lockout");
       if (lockedUntil && new Date(lockedUntil) > new Date()) {
         const timeLeft = Math.ceil(
@@ -118,90 +122,92 @@ const Login = () => {
 
         // Check if email is verified
         if (data.data.user.isVerified === false) {
-          // Store the email in sessionStorage for the verification page to use (more secure)
+          // Handle unverified email (keep your existing code)
           sessionStorage.setItem("pendingVerificationEmail", values.email);
-          // Show toast notification
           toast.info("Your email needs to be verified before logging in");
-
-          // Navigate to verification page
           navigate("/verify-email");
           return;
         }
-        if (rememberMe) {
-          localStorage.setItem("userEmail", data.data.user.email);
-          localStorage.setItem("isLoggedIn", true);
-          localStorage.setItem("userId", data.data.user.id);
-          localStorage.setItem("token", data.data.token);
 
-          // Set cookie with expiration date (30 days)
-          const expiryDate = new Date();
-          expiryDate.setDate(expiryDate.getDate() + 30);
-          document.cookie = `token=${
-            data.data.token
-          }; expires=${expiryDate.toUTCString()}; path=/; Secure; SameSite=Strict`;
-        } else {
-          // Use session storage which clears when browser closes
-          sessionStorage.setItem("userEmail", data.data.user.email);
-          sessionStorage.setItem("isLoggedIn", "true");
-          sessionStorage.setItem("userId", data.data.user.id);
-          sessionStorage.setItem("token", data.data.token);
-          localStorage.setItem("isLoggedIn", true); // Keep this for compatibility
-          localStorage.setItem("userId", data.data.user.id); // Keep this for compatibility
-        }
-        // Show success toast
-        toast.success("Login Success");
+        // Check if user is admin and redirect accordingly
+        try {
+          // Decode the JWT token to check admin status
+          const decodedToken = jwtDecode(data.data.token);
+          const isAdmin = decodedToken.isAdmin;
 
-        // Add delay before navigation to ensure toast is visible
-        setTimeout(async () => {
-          // Check if user has already submitted their info
-          try {
-            const userId = data.data.user.id;
-            const userInfoResponse = await fetch(
-              `http://localhost:8000/api/v1/auth/users/${userId}/info`,
-              {
-                method: "GET",
-                headers: {
-                  Authorization: `Bearer ${data.data.token}`,
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-            const userInfoData = await userInfoResponse.json();
+          // Set storage based on remember me
+          if (rememberMe) {
+            localStorage.setItem("userEmail", data.data.user.email);
+            localStorage.setItem("isLoggedIn", true);
+            localStorage.setItem("userId", data.data.user.id);
+            localStorage.setItem("token", data.data.token);
+            localStorage.setItem("userRole", isAdmin ? "admin" : "user");
+          } else {
+            // Session storage
+            sessionStorage.setItem("userEmail", data.data.user.email);
+            sessionStorage.setItem("isLoggedIn", "true");
+            sessionStorage.setItem("userId", data.data.user.id);
+            sessionStorage.setItem("token", data.data.token);
+            sessionStorage.setItem("userRole", isAdmin ? "admin" : "user");
 
-            if (
-              userInfoResponse.ok &&
-              userInfoData.success &&
-              userInfoData.data
-            ) {
-              // User info exists, navigate to home
-              navigate("/");
-            } else {
-              // No user info yet, navigate to user info page
-              navigate("/user-info");
-            }
-          } catch (error) {
-            console.error("Error checking user info:", error);
-            // Default to user info page if check fails
-            navigate("/user-info");
+            // Also save in localStorage for consistency
+            localStorage.setItem("isLoggedIn", true);
+            localStorage.setItem("userId", data.data.user.id);
+            localStorage.setItem("userRole", isAdmin ? "admin" : "user");
           }
-        }, 500); // .5 second delay
+
+          // Show success toast
+          toast.success("Login Success");
+
+          // Add short delay to ensure toast is visible
+          setTimeout(() => {
+            if (isAdmin) {
+              // User is admin, navigate to admin dashboard
+              navigate("/admin");
+            } else {
+              // Regular user flow - check if they have submitted info
+              checkUserInfo(data.data.user.id, data.data.token);
+            }
+          }, 500);
+        } catch (error) {
+          console.error("Error decoding token:", error);
+          // Fallback to regular flow if token decoding fails
+
+          // Set storage without role information
+          if (rememberMe) {
+            localStorage.setItem("userEmail", data.data.user.email);
+            localStorage.setItem("isLoggedIn", true);
+            localStorage.setItem("userId", data.data.user.id);
+            localStorage.setItem("token", data.data.token);
+          } else {
+            sessionStorage.setItem("userEmail", data.data.user.email);
+            sessionStorage.setItem("isLoggedIn", "true");
+            sessionStorage.setItem("userId", data.data.user.id);
+            sessionStorage.setItem("token", data.data.token);
+            localStorage.setItem("isLoggedIn", true);
+            localStorage.setItem("userId", data.data.user.id);
+          }
+
+          toast.success("Login Success");
+          // Default to user flow
+          checkUserInfo(data.data.user.id, data.data.token);
+        }
       } else {
-        // Handle failed login attempts
-        const attempts =
-          parseInt(localStorage.getItem("login_attempts") || "0") + 1;
+        // Handle failed login - increase attempt counter
+        let attempts = parseInt(localStorage.getItem("login_attempts") || "0");
+        attempts += 1;
         localStorage.setItem("login_attempts", attempts);
 
-        // Lock account after 5 failed attempts for 30 minutes
+        // If too many failed attempts, lock the account temporarily
         if (attempts >= 5) {
-          const lockUntil = new Date(Date.now() + 1 * 60000); // 1 minutes
-          localStorage.setItem("account_lockout", lockUntil.toString());
+          const lockoutTime = new Date();
+          lockoutTime.setMinutes(lockoutTime.getMinutes() + 30); // Lock for 30 minutes
+          localStorage.setItem("account_lockout", lockoutTime.toString());
           toast.error(
-            "Too many failed login attempts. Account locked for 30 minutes."
+            "Too many failed attempts. Account locked for 30 minutes."
           );
         } else {
-          toast.error(
-            data.message || `Login Failed (${5 - attempts} attempts remaining)`
-          );
+          toast.error(data?.message || "Invalid email or password");
         }
       }
     } catch (error) {
@@ -212,6 +218,34 @@ const Login = () => {
     }
   };
 
+  // Add this helper function to make the code cleaner
+  const checkUserInfo = async (userId, token) => {
+    try {
+      const userInfoResponse = await fetch(
+        `http://localhost:8000/api/v1/auth/users/${userId}/info`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      const userInfoData = await userInfoResponse.json();
+
+      if (userInfoResponse.ok && userInfoData.success && userInfoData.data) {
+        // User info exists, navigate to home
+        navigate("/");
+      } else {
+        // No user info yet, navigate to user info page
+        navigate("/user-info");
+      }
+    } catch (error) {
+      console.error("Error checking user info:", error);
+      // Default to user info page if check fails
+      navigate("/user-info");
+    }
+  };
   // Handle forgot password email submit
   const handleForgotPasswordEmailSubmit = async (e) => {
     e.preventDefault();

@@ -25,38 +25,157 @@ import AboutUs from "./pages/AboutUs.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import ProgressTracking from "./pages/ProgressTracking.jsx";
 import AdminDashboard from "./pages/admin/index.jsx";
+import AdminLayout from "./pages/admin/AdminLayout.jsx";
+import WorkoutPlansAdmin from "./pages/admin/WorkoutPlansAdmin.jsx";
+import NutritionPlansAdmin from "./pages/admin/NutritionPlansAdmin.jsx";
+import SupplementsAdmin from "./pages/admin/SupplementsAdmin.jsx";
+import UsersAdmin from "./pages/admin/UsersAdmin.jsx";
+import { AuthProvider } from "./contexts/AuthContext.jsx";
+import Hero from "./components/Hero/Hero.jsx";
+
+import {
+  ProtectedRoute,
+  AdminRoute,
+  UserRoute,
+} from "./components/routes/ProtectedRoute.jsx";
+
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
-      <Route path="user-info" element={<UserInfo />} />
+      {/* Public routes - no protection needed */}
+      <Route path="login" element={<Login />} />
+      <Route path="register" element={<Register />} />
+      <Route path="verify-email" element={<VerifyEmail />} />
+      <Route path="aboutUs" element={<AboutUs />} />
 
+      {/* User-only routes - need authentication */}
       <Route path="/" element={<App />}>
-        <Route path="exercises/:id" element={<ExerciseDetail />} />
-        <Route path="exercise" element={<Exercise />} />
-        <Route path="login" element={<Login />} />
-        <Route path="register" element={<Register />} />
-        <Route path="verify-email" element={<VerifyEmail />} />
-        <Route path="/progress-tracking" element={<ProgressTracking />} />
-        <Route path="/nutrition" element={<ProgressTracking />} />
-        <Route path="supplements" element={<Supplement />} />
-        <Route path="aboutUs" element={<AboutUs />} />
-        <Route path="dashboard" element={<Dashboard />} />
         <Route
-          path="aboutUs"
+          index
           element={
-            <div className="container mx-auto p-8">About Us Content</div>
+            <UserRoute>
+              <ProtectedRoute>
+                <Hero />
+              </ProtectedRoute>
+            </UserRoute>
           }
         />
-        <Route path="recipes" element={<Recipe />} />
-        <Route path="recipe/:recipeId" element={<RecipeDetail />} />
+        <Route
+          path="exercises/:id"
+          element={
+            <UserRoute>
+              <ProtectedRoute>
+                <ExerciseDetail />
+              </ProtectedRoute>
+            </UserRoute>
+          }
+        />
+        <Route
+          path="exercise"
+          element={
+            <UserRoute>
+              <ProtectedRoute>
+                <Exercise />
+              </ProtectedRoute>
+            </UserRoute>
+          }
+        />
+        <Route
+          path="progress-tracking"
+          element={
+            <UserRoute>
+              <ProtectedRoute>
+                <ProgressTracking />
+              </ProtectedRoute>
+            </UserRoute>
+          }
+        />
+        <Route
+          path="nutrition"
+          element={
+            <UserRoute>
+              <ProtectedRoute>
+                <ProgressTracking />
+              </ProtectedRoute>
+            </UserRoute>
+          }
+        />
+        <Route
+          path="supplements"
+          element={
+            <UserRoute>
+              <ProtectedRoute>
+                <Supplement />
+              </ProtectedRoute>
+            </UserRoute>
+          }
+        />
+        <Route
+          path="dashboard"
+          element={
+            <UserRoute>
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            </UserRoute>
+          }
+        />
+        <Route
+          path="recipes"
+          element={
+            <UserRoute>
+              <ProtectedRoute>
+                <Recipe />
+              </ProtectedRoute>
+            </UserRoute>
+          }
+        />
+        <Route
+          path="recipe/:recipeId"
+          element={
+            <UserRoute>
+              <ProtectedRoute>
+                <RecipeDetail />
+              </ProtectedRoute>
+            </UserRoute>
+          }
+        />
       </Route>
-      <Route path="admin" element={<AdminDashboard />} />
+
+      <Route
+        path="user-info"
+        element={
+          <UserRoute>
+            <ProtectedRoute>
+              <UserInfo />
+            </ProtectedRoute>
+          </UserRoute>
+        }
+      />
+
+      {/* Admin-only routes */}
+      <Route
+        path="admin"
+        element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }
+      >
+        <Route index element={<AdminDashboard />} />
+        <Route path="workout-plans" element={<WorkoutPlansAdmin />} />
+        <Route path="nutrition-plans" element={<NutritionPlansAdmin />} />
+        <Route path="supplements" element={<SupplementsAdmin />} />
+        <Route path="users" element={<UsersAdmin />} />
+      </Route>
     </>
   )
 );
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </StrictMode>
 );

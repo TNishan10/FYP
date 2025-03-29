@@ -8,6 +8,8 @@ import { MdDashboard, MdLogout, MdSettings } from "react-icons/md";
 import { CgGym } from "react-icons/cg";
 import { BsPersonVcard } from "react-icons/bs";
 import DarkMode from "./DarkMode";
+import { useAuth } from "../../contexts/AuthContext"; // Import useAuth
+
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -67,6 +69,7 @@ const Navbar = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const profileMenuRef = useRef(null);
   const mobileMenuRef = useRef(null);
+  const { logout } = useAuth(); // Use the logout function from AuthContext
 
   // Check login status whenever component renders or location changes
   useEffect(() => {
@@ -118,14 +121,8 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
-    // Clear all user data
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("userId");
-    sessionStorage.removeItem("token");
-    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    setIsLoggedIn(false);
-    setShowProfileMenu(false);
+    // Call the logout function from AuthContext
+    logout();
 
     // Show logout success toast with better visibility
     toast.success("Logged out successfully", {

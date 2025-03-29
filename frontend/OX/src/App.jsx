@@ -13,6 +13,7 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { AuthProvider } from "./contexts/AuthContext.jsx";
 
 const App = () => {
   const [orderPopup, setOrderPopup] = useState(false);
@@ -36,6 +37,7 @@ const App = () => {
   const isHomePage = location.pathname === "/";
 
   return (
+    
     <div className="bg-white dark:bg-gray-900 dark:text-white duration-200">
       <Navbar handleOrderPopup={handleOrderPopup} />
 
