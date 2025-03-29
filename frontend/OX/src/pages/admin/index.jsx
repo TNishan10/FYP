@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, Statistic, Row, Col, Typography, Divider } from "antd";
+import { Card, Statistic, Row, Col, Typography, Divider, message } from "antd";
 import {
   UserOutlined,
   HeartOutlined,
@@ -19,22 +19,60 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Your existing data fetching code
-        const usersResponse = await axios.get("/api/users/count");
-        setUserCount(usersResponse.data.count);
+        const token = sessionStorage.getItem("token");
+        if (!token) {
+          console.error("No token found");
+          return;
+        }
 
+        // Fetch users
+        const usersResponse = await axios.get(
+          "http://localhost:8000/api/v1/auth/users",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        setUserCount(usersResponse.data.data.length);
+
+        // Fetch workout plans
         const workoutPlansResponse = await axios.get(
-          "/api/workout-plans/count"
+          "http://localhost:8000/api/v1/auth/workout-plans",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
         );
-        setWorkoutPlanCount(workoutPlansResponse.data.count);
+        setWorkoutPlanCount(workoutPlansResponse.data.data.length);
 
+        // Fetch nutrition plans
         const nutritionPlansResponse = await axios.get(
-          "/api/nutrition-plans/count"
+          "http://localhost:8000/api/v1/auth/nutrition-plans",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
         );
-        setNutritionPlanCount(nutritionPlansResponse.data.count);
+        setNutritionPlanCount(nutritionPlansResponse.data.data.length);
 
-        const supplementsResponse = await axios.get("/api/supplements/count");
-        setSupplementCount(supplementsResponse.data.count);
+        // Fetch supplements
+        const supplementsResponse = await axios.get(
+          "http://localhost:8000/api/v1/auth/supplement",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        if (
+          supplementsResponse &&
+          supplementsResponse.data &&
+          supplementsResponse.data.data
+        ) {
+          setSupplementCount(supplementsResponse.data.data.length);
+        } else {
+          console.warn(
+            "Supplement data structure is unexpected:",
+            supplementsResponse
+          );
+          message.warn("Could not determine supplement count");
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       }
