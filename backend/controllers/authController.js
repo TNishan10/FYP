@@ -257,10 +257,16 @@ export const loginController = async (req, res) => {
     }
 
     // Create and return token WITH verification status
-    const token = JWT.sign({ id: user.user_id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
-
+    const token = JWT.sign(
+      {
+        id: user.user_id, // UUID string format
+        email: user.user_email,
+        name: user.user_name,
+        isAdmin: user.user_role === "admin", // Add admin check
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
     res.status(200).json({
       success: true,
       message: "Login successful",

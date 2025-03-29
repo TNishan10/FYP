@@ -23,6 +23,8 @@ import Recipe from "./pages/Recipe.jsx";
 import RecipeDetail from "./pages/RecipeDetail.jsx";
 import AboutUs from "./pages/AboutUs.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import ProgressTracking from "./pages/ProgressTracking.jsx";
+import AdminDashboard from "./pages/admin/index.jsx";
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
@@ -34,6 +36,8 @@ const router = createBrowserRouter(
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="verify-email" element={<VerifyEmail />} />
+        <Route path="/progress-tracking" element={<ProgressTracking />} />
+        <Route path="/nutrition" element={<ProgressTracking />} />
         <Route path="supplements" element={<Supplement />} />
         <Route path="aboutUs" element={<AboutUs />} />
         <Route path="dashboard" element={<Dashboard />} />
@@ -46,6 +50,7 @@ const router = createBrowserRouter(
         <Route path="recipes" element={<Recipe />} />
         <Route path="recipe/:recipeId" element={<RecipeDetail />} />
       </Route>
+      <Route path="admin" element={<AdminDashboard />} />
     </>
   )
 );

@@ -31,21 +31,28 @@ export const requireSignIn = async (req, res, next) => {
   }
 };
 
-// Optional: Check if user is admin
+// Middleware to check if user is admin
 export const isAdmin = async (req, res, next) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({
+    const { user_id } = req.user;
+
+    // Query to check user role
+    const query = "SELECT role FROM users WHERE user_id = $1";
+    const result = await con.query(query, [user_id]);
+
+    if (!result.rows.length || result.rows[0].role !== "admin") {
+      return res.status(401).send({
         success: false,
         message: "Admin access required",
       });
     }
+
     next();
   } catch (error) {
-    console.error("Admin Check Error:", error);
-    return res.status(500).json({
+    console.log(error);
+    return res.status(401).send({
       success: false,
-      message: "Internal server error",
+      message: "Error in admin middleware",
     });
   }
 };

@@ -544,7 +544,7 @@ const Dashboard = () => {
           <h1 className="text-3xl tracking-widest text-gray-600 text-center mb-0 py-4 px-4 heading">
             ❛ Welcome to{" "}
             <span className="font-semibold text-primaryButton">
-              GUARDIAN FITNESS{" "}
+              OX-Strength Training Ground{" "}
             </span>
             ❜
           </h1>

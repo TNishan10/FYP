@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import COVER_IMAGE from "../assets/login.jpg";
@@ -15,6 +15,51 @@ const colors = {
 
 const Login = () => {
   const navigate = useNavigate();
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [otpTimerActive, setOtpTimerActive] = useState(false);
+  const [otpExpiryTime, setOtpExpiryTime] = useState(300);
+  const [loginAttempts, setLoginAttempts] = useState(0);
+
+  // Check if user is already logged in when component mounts
+  useEffect(() => {
+    const isLoggedIn = localStorage.getItem("isLoggedIn");
+    const token = sessionStorage.getItem("token");
+    const userId = localStorage.getItem("userId");
+
+    if (isLoggedIn && token && userId) {
+      // User is already logged in, redirect to home page
+      navigate("/");
+    }
+
+    const lockedUntil = localStorage.getItem("account_lockout");
+    if (lockedUntil && new Date(lockedUntil) > new Date()) {
+      const remainingTime = Math.ceil(
+        (new Date(lockedUntil) - new Date()) / 1000 / 60
+      );
+      toast.error(
+        `Account is temporarily locked. Try again in ${remainingTime} minutes.`
+      );
+    } else if (lockedUntil) {
+      // Clear lockout if it's expired
+      localStorage.removeItem("account_lockout");
+      localStorage.removeItem("login_attempts");
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    let timer;
+    if (otpTimerActive && otpExpiryTime > 0) {
+      timer = setInterval(() => {
+        setOtpExpiryTime((prev) => prev - 1);
+      }, 1000);
+    } else if (otpExpiryTime === 0) {
+      setOtpTimerActive(false);
+      toast.info("Verification code expired. Please request a new one.");
+    }
+
+    return () => clearInterval(timer);
+  }, [otpTimerActive, otpExpiryTime]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Forgot password states
@@ -32,6 +77,7 @@ const Login = () => {
   ]);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
@@ -42,9 +88,19 @@ const Login = () => {
     .map(() => React.createRef());
 
   // Update the handleLogin function in your Login.jsx
-
   const handleLogin = async (values) => {
     try {
+      // Check if account is locked
+      const lockedUntil = localStorage.getItem("account_lockout");
+      if (lockedUntil && new Date(lockedUntil) > new Date()) {
+        const timeLeft = Math.ceil(
+          (new Date(lockedUntil) - new Date()) / 1000 / 60
+        );
+        toast.error(
+          `Account temporarily locked. Try again in ${timeLeft} minutes.`
+        );
+        return;
+      }
       setIsSubmitting(true);
       const response = await fetch("http://localhost:8000/api/v1/auth/login", {
         method: "POST",
@@ -55,13 +111,15 @@ const Login = () => {
       });
       const data = await response.json();
       console.log("Login Data:", data);
-
       if (data?.success === true) {
+        // Reset login attempts on successful login
+        localStorage.removeItem("login_attempts");
+        localStorage.removeItem("account_lockout");
+
         // Check if email is verified
         if (data.data.user.isVerified === false) {
-          // Store the email in localStorage for the verification page to use
-          localStorage.setItem("pendingVerificationEmail", values.email);
-
+          // Store the email in sessionStorage for the verification page to use (more secure)
+          sessionStorage.setItem("pendingVerificationEmail", values.email);
           // Show toast notification
           toast.info("Your email needs to be verified before logging in");
 
@@ -69,49 +127,82 @@ const Login = () => {
           navigate("/verify-email");
           return;
         }
+        if (rememberMe) {
+          localStorage.setItem("userEmail", data.data.user.email);
+          localStorage.setItem("isLoggedIn", true);
+          localStorage.setItem("userId", data.data.user.id);
+          localStorage.setItem("token", data.data.token);
 
-        // Store user data
-        localStorage.setItem("userEmail", data.data.user.email);
-        localStorage.setItem("isLoggedIn", true);
-        localStorage.setItem("userId", data.data.user.id);
-        sessionStorage.setItem("token", data.data.token);
-
+          // Set cookie with expiration date (30 days)
+          const expiryDate = new Date();
+          expiryDate.setDate(expiryDate.getDate() + 30);
+          document.cookie = `token=${
+            data.data.token
+          }; expires=${expiryDate.toUTCString()}; path=/; Secure; SameSite=Strict`;
+        } else {
+          // Use session storage which clears when browser closes
+          sessionStorage.setItem("userEmail", data.data.user.email);
+          sessionStorage.setItem("isLoggedIn", "true");
+          sessionStorage.setItem("userId", data.data.user.id);
+          sessionStorage.setItem("token", data.data.token);
+          localStorage.setItem("isLoggedIn", true); // Keep this for compatibility
+          localStorage.setItem("userId", data.data.user.id); // Keep this for compatibility
+        }
+        // Show success toast
         toast.success("Login Success");
 
-        // Check if user has already submitted their info
-        try {
-          const userId = data.data.user.id;
-          const userInfoResponse = await fetch(
-            `http://localhost:8000/api/v1/auth/users/${userId}/info`,
-            {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${data.data.token}`,
-                "Content-Type": "application/json",
-              },
+        // Add delay before navigation to ensure toast is visible
+        setTimeout(async () => {
+          // Check if user has already submitted their info
+          try {
+            const userId = data.data.user.id;
+            const userInfoResponse = await fetch(
+              `http://localhost:8000/api/v1/auth/users/${userId}/info`,
+              {
+                method: "GET",
+                headers: {
+                  Authorization: `Bearer ${data.data.token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+            const userInfoData = await userInfoResponse.json();
+
+            if (
+              userInfoResponse.ok &&
+              userInfoData.success &&
+              userInfoData.data
+            ) {
+              // User info exists, navigate to home
+              navigate("/");
+            } else {
+              // No user info yet, navigate to user info page
+              navigate("/user-info");
             }
-          );
-
-          const userInfoData = await userInfoResponse.json();
-
-          if (
-            userInfoResponse.ok &&
-            userInfoData.success &&
-            userInfoData.data
-          ) {
-            // User info exists, navigate to home
-            navigate("/");
-          } else {
-            // No user info yet, navigate to user info page
+          } catch (error) {
+            console.error("Error checking user info:", error);
+            // Default to user info page if check fails
             navigate("/user-info");
           }
-        } catch (error) {
-          console.error("Error checking user info:", error);
-          // Default to user info page if check fails
-          navigate("/user-info");
-        }
+        }, 500); // .5 second delay
       } else {
-        toast.error(data.message || "Login Failed");
+        // Handle failed login attempts
+        const attempts =
+          parseInt(localStorage.getItem("login_attempts") || "0") + 1;
+        localStorage.setItem("login_attempts", attempts);
+
+        // Lock account after 5 failed attempts for 30 minutes
+        if (attempts >= 5) {
+          const lockUntil = new Date(Date.now() + 1 * 60000); // 1 minutes
+          localStorage.setItem("account_lockout", lockUntil.toString());
+          toast.error(
+            "Too many failed login attempts. Account locked for 30 minutes."
+          );
+        } else {
+          toast.error(
+            data.message || `Login Failed (${5 - attempts} attempts remaining)`
+          );
+        }
       }
     } catch (error) {
       console.error("Backend Error:", error);
@@ -151,6 +242,10 @@ const Login = () => {
         toast.success("OTP sent to your email address");
         setForgotPasswordStep(2);
 
+        // Start the OTP expiry timer
+        setOtpExpiryTime(120); // 2 minutes in seconds
+        setOtpTimerActive(true);
+
         // Focus on first OTP input
         setTimeout(() => {
           if (otpInputRefs[0].current) {
@@ -171,6 +266,12 @@ const Login = () => {
   // Handle OTP verification
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
+
+    // Check if OTP has expired
+    if (!otpTimerActive || otpExpiryTime <= 0) {
+      toast.error("Verification code has expired. Please request a new one.");
+      return;
+    }
 
     const otpCode = forgotPasswordOtp.join("");
     if (otpCode.length !== 6) {
@@ -198,6 +299,7 @@ const Login = () => {
       if (data.success) {
         toast.success("OTP verified successfully");
         setForgotPasswordStep(3);
+        setOtpTimerActive(false); // Stop the timer once verified
       } else {
         toast.error(data.message || "Invalid OTP. Please try again.");
       }
@@ -213,8 +315,28 @@ const Login = () => {
   const handleResetPassword = async (e) => {
     e.preventDefault();
 
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters long");
+    // Enhanced password validation
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters long");
+      return;
+    }
+
+    if (!/[A-Z]/.test(newPassword)) {
+      toast.error("Password must include at least one uppercase letter");
+      return;
+    }
+
+    if (!/[a-z]/.test(newPassword)) {
+      toast.error("Password must include at least one lowercase letter");
+      return;
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      toast.error("Password must include at least one number");
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      toast.error("Password must include at least one special character");
       return;
     }
 
@@ -256,6 +378,11 @@ const Login = () => {
     } finally {
       setResettingPassword(false);
     }
+  };
+
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setPasswordVisible(!passwordVisible);
   };
 
   // Reset forgot password state
@@ -339,7 +466,16 @@ const Login = () => {
           "Only gmail.com, yahoo.com, and hotmail.com emails are allowed"
         )
         .required("Email is required"),
-      password: Yup.string().required("Password is required"),
+      password: Yup.string()
+        .required("Password is required")
+        .min(8, "Password must be at least 8 characters")
+        .matches(/[0-9]/, "Password must contain at least one number")
+        .matches(/[a-z]/, "Password must contain at least one lowercase letter")
+        .matches(/[A-Z]/, "Password must contain at least one uppercase letter")
+        .matches(
+          /[^\w]/,
+          "Password must contain at least one special character"
+        ),
     }),
     onSubmit: (values) => {
       handleLogin(values);
@@ -900,17 +1036,57 @@ const Login = () => {
               {formik.errors.email && formik.touched.email ? (
                 <p className="text-red-500 text-sm">{formik.errors.email}</p>
               ) : null}
-              <input
-                type="password"
-                name="password"
-                id="password"
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                value={formik.values.password}
-                placeholder="Password"
-                autoComplete="current-password"
-                className="w-full text-black py-4 my-2 bg-transparent border-b border-black outline-none focus:outline-none"
-              />
+              <div className="relative w-full">
+                <input
+                  type={passwordVisible ? "text" : "password"}
+                  name="password"
+                  id="password"
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  value={formik.values.password}
+                  placeholder="Password"
+                  autoComplete="current-password"
+                  className="w-full text-black py-4 my-2 bg-transparent border-b border-black outline-none focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-gray-800 focus:outline-none"
+                  tabIndex="-1" // Prevents tab focus on the button
+                >
+                  {passwordVisible ? (
+                    // Eye-off icon (password visible)
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z"
+                        clipRule="evenodd"
+                      />
+                      <path d="M12.454 16.697L9.75 13.992a4 4 0 01-3.742-3.741L2.335 6.578A9.98 9.98 0 00.458 10c1.274 4.057 5.065 7 9.542 7 .847 0 1.669-.105 2.454-.303z" />
+                    </svg>
+                  ) : (
+                    // Eye icon (password hidden)
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path
+                        fillRule="evenodd"
+                        d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
             {formik.errors.password && formik.touched.password ? (
               <p className="text-red-500 text-sm">{formik.errors.password}</p>
@@ -918,7 +1094,12 @@ const Login = () => {
 
             <div className="w-full flex items-center justify-between mt-2">
               <div className="w-full flex items-center">
-                <input type="checkbox" className="w-4 h-4 mr-2" />
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 mr-2"
+                />
                 <p className="text-sm">Remember me for 30 days</p>
               </div>
 
@@ -979,8 +1160,6 @@ const Login = () => {
       >
         {renderForgotPasswordContent()}
       </Modal>
-
-      <ToastContainer />
     </div>
   );
 };

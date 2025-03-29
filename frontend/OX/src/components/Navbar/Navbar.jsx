@@ -9,6 +9,8 @@ import { CgGym } from "react-icons/cg";
 import { BsPersonVcard } from "react-icons/bs";
 import DarkMode from "./DarkMode";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const Menu = [
   {
@@ -29,7 +31,7 @@ const Menu = [
   {
     id: 4,
     name: "Progress Tracking",
-    link: "/progress",
+    link: "/progress-tracking",
   },
   {
     id: 5,
@@ -116,6 +118,7 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
+    // Clear all user data
     localStorage.removeItem("userEmail");
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("userId");
@@ -124,10 +127,24 @@ const Navbar = () => {
     setIsLoggedIn(false);
     setShowProfileMenu(false);
 
+    // Show logout success toast with better visibility
+    toast.success("Logged out successfully", {
+      position: "top-center", // Changed to top-center for better visibility
+      autoClose: 3000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+      progress: undefined,
+    });
+
     // Dispatch custom event to notify other components
     window.dispatchEvent(new Event("loginStatusChanged"));
 
-    navigate("/");
+    // Navigate to home page after toast is visible
+    setTimeout(() => {
+      navigate("/");
+    }, 1500); // Reduced to 1.5 seconds which is still enough to see the toast
   };
 
   const navigateToDashboard = () => {

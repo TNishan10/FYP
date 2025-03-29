@@ -71,6 +71,28 @@ import {
   resetPassword,
 } from "../controllers/passwordResetController.js";
 
+import {
+  searchFoods,
+  getDailyFoodLog,
+  addFood,
+  addFoodToLog,
+  removeFoodFromLog,
+} from "../controllers/NutritionController.js";
+
+import {
+  getWeightHistory,
+  addWeightEntry,
+  deleteWeightEntry,
+} from "../controllers/WeightController.js";
+
+import {
+  getExercises,
+  getMuscleGroups,
+  getUserExerciseLogs,
+  logExercise,
+  removeExerciseLog,
+} from "../controllers/ExerciseController.js";
+
 import crypto from "crypto";
 import con from "../server.js";
 
@@ -283,5 +305,28 @@ router.delete(
   "/users/:user_id/health-conditions/:condition_id",
   removeUserHealthCondition
 );
+
+// Nutrition Routes
+router.get("/nutrition/foods/search", searchFoods);
+router.get("/nutrition/daily-log/:userId", getDailyFoodLog);
+router.post("/nutrition/daily-log/:userId/add", addFoodToLog);
+router.post("/nutrition/foods/add", addFood);
+router.delete(
+  "/nutrition/daily-log/:userId/remove/:logId",
+
+  removeFoodFromLog
+);
+
+// Weight Tracking Routes
+router.get("/progress/weight/:userId", getWeightHistory);
+router.post("/progress/weight/:userId/add", addWeightEntry);
+router.delete("/progress/weight/:userId/:weightId", deleteWeightEntry);
+
+// Exercise Tracking Routes
+router.get("/exercises/list", getExercises);
+router.get("/exercises/muscle-groups", getMuscleGroups);
+router.get("/exercises/user/:userId", getUserExerciseLogs);
+router.post("/exercises/log/:userId", logExercise);
+router.delete("/exercises/log/:userId/remove/:logId", removeExerciseLog);
 
 export default router;
