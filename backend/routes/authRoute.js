@@ -8,6 +8,9 @@ import {
   deleteUser,
   getUserByEmail,
   verifyUser,
+  createUserByAdmin,
+  updateUserByAdmin,
+  softDeleteUser,
 } from "../controllers/UsersController.js";
 
 import {
@@ -51,6 +54,8 @@ import {
   getSupplementController,
   getSupplementByIdController,
   createSupplementController,
+  updateSupplementController,
+  deleteSupplementController,
 } from "../controllers/SupplementController.js";
 
 import {
@@ -108,6 +113,9 @@ router.post("/users", createUser);
 router.put("/users/:id", updateUser);
 router.delete("/users/:id", deleteUser);
 router.post("/verify", verifyUser);
+router.post("/users/admin/create", createUserByAdmin);
+router.put("/users/:id", updateUserByAdmin);
+router.put("/users/:id/deactivate", softDeleteUser);
 
 // Public Routes
 router.post("/register", registerController);
@@ -263,7 +271,8 @@ router.post("/reset-password", resetPassword);
 router.get("/supplement", getSupplementController);
 router.get("/supplement/:id", getSupplementByIdController);
 router.post("/supplement", requireSignIn, isAdmin, createSupplementController);
-
+router.put("/supplement/:id", updateSupplementController);
+router.delete("/supplement/:id", deleteSupplementController);
 // // Plan routes - protected
 // router.get("/plans", requireSignIn, getPlanController);
 // router.post("/plans", requireSignIn, createPlanController);

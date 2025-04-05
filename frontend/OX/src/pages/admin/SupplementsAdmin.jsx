@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Typography, Table, Button, Space, message, Image } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import axios from "axios";
-import AddSupplement from "../../components/admin/AddSupplement";
+import AddSupplement from "../../components/admin/Supplements/AddSupplement";
+import EditSupplement from "../../components/admin/Supplements/EditSupplement";
+import DeleteSupplement from "../../components/admin/Supplements/DeleteSupplement";
 
 const { Title } = Typography;
 
@@ -15,6 +17,14 @@ const SupplementsAdmin = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [selectedSupplement, setSelectedSupplement] = useState(null);
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   useEffect(() => {
     fetchSupplements();
@@ -37,7 +47,15 @@ const SupplementsAdmin = () => {
       );
 
       if (response.data && response.data.data) {
-        setSupplements(response.data.data);
+        // Sort supplements consistently by ID to maintain order
+        const sortedSupplements = [...response.data.data].sort(
+          (a, b) => a.supplement_id - b.supplement_id
+        );
+        setSupplements(sortedSupplements);
+        setPagination((prev) => ({
+          ...prev,
+          total: sortedSupplements.length,
+        }));
       } else {
         setError("No supplements found.");
       }
@@ -49,13 +67,57 @@ const SupplementsAdmin = () => {
     }
   };
 
-  const handleAddSuccess = (newSupplement) => {
+  const handleAddSuccess = () => {
     // Refresh the list after adding a new supplement
     fetchSupplements();
     message.success("Supplement added successfully!");
   };
 
+  const handleEditSuccess = (updatedSupplement) => {
+    // Update the specific supplement in the array without changing order
+    const updatedSupplements = supplements.map((sup) =>
+      sup.supplement_id === updatedSupplement.supplement_id
+        ? updatedSupplement
+        : sup
+    );
+    setSupplements(updatedSupplements);
+    message.success("Supplement updated successfully!");
+  };
+
+  const handleDeleteSuccess = (deletedId) => {
+    // Remove the deleted supplement from the array
+    const updatedSupplements = supplements.filter(
+      (sup) => sup.supplement_id !== deletedId
+    );
+    setSupplements(updatedSupplements);
+    setPagination((prev) => ({
+      ...prev,
+      total: updatedSupplements.length,
+    }));
+    message.success("Supplement deleted successfully!");
+  };
+
+  const handleEditClick = (record) => {
+    setSelectedSupplement(record);
+    setIsEditModalVisible(true);
+  };
+
+  const handleDeleteClick = (record) => {
+    setSelectedSupplement(record);
+    setIsDeleteModalVisible(true);
+  };
+
+  const handleTableChange = (pagination) => {
+    setPagination(pagination);
+  };
+
   const columns = [
+    {
+      title: "ID",
+      dataIndex: "supplement_id",
+      key: "supplement_id",
+      sorter: (a, b) => a.supplement_id - b.supplement_id,
+    },
     {
       title: "Image",
       dataIndex: "image_url",
@@ -68,7 +130,7 @@ const SupplementsAdmin = () => {
           height={50}
           style={{ objectFit: "cover" }}
           fallback={FALLBACK_IMAGE}
-          preview={false} // Disable preview to prevent errors with fallback
+          preview={false}
         />
       ),
     },
@@ -107,14 +169,18 @@ const SupplementsAdmin = () => {
       key: "action",
       render: (text, record) => (
         <Space size="middle">
-          <Button type="primary">Edit</Button>
-          <Button danger>Delete</Button>
+          <Button type="primary" onClick={() => handleEditClick(record)}>
+            Edit
+          </Button>
+          <Button danger onClick={() => handleDeleteClick(record)}>
+            Delete
+          </Button>
         </Space>
       ),
     },
   ];
 
-  if (loading) {
+  if (loading && supplements.length === 0) {
     return <div>Loading supplements...</div>;
   }
 
@@ -146,12 +212,29 @@ const SupplementsAdmin = () => {
         dataSource={supplements}
         columns={columns}
         rowKey="supplement_id"
+        pagination={pagination}
+        onChange={handleTableChange}
+        loading={loading}
       />
 
       <AddSupplement
         visible={isAddModalVisible}
         onCancel={() => setIsAddModalVisible(false)}
         onSuccess={handleAddSuccess}
+      />
+
+      <EditSupplement
+        visible={isEditModalVisible}
+        onCancel={() => setIsEditModalVisible(false)}
+        onSuccess={handleEditSuccess}
+        supplement={selectedSupplement}
+      />
+
+      <DeleteSupplement
+        visible={isDeleteModalVisible}
+        onCancel={() => setIsDeleteModalVisible(false)}
+        onSuccess={handleDeleteSuccess}
+        supplement={selectedSupplement}
       />
     </div>
   );

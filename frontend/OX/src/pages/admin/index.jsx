@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { Card, Statistic, Row, Col, Typography, Divider, message } from "antd";
+import {
+  Card,
+  Statistic,
+  Row,
+  Col,
+  Typography,
+  Divider,
+  message,
+  Button,
+} from "antd";
 import {
   UserOutlined,
   HeartOutlined,
   AppleOutlined,
   MedicineBoxOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 
@@ -15,44 +25,76 @@ const AdminDashboard = () => {
   const [workoutPlanCount, setWorkoutPlanCount] = useState(0);
   const [nutritionPlanCount, setNutritionPlanCount] = useState(0);
   const [supplementCount, setSupplementCount] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  // Define fetchData outside useEffect so handleRefresh can access it
+  const fetchData = async () => {
+    try {
+      const token =
+        sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (!token) {
+        console.error("No token found");
+        return;
+      }
+
+      // Fetch users with individual try/catch
       try {
-        const token = sessionStorage.getItem("token");
-        if (!token) {
-          console.error("No token found");
-          return;
-        }
-
-        // Fetch users
         const usersResponse = await axios.get(
           "http://localhost:8000/api/v1/auth/users",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        setUserCount(usersResponse.data.data.length);
 
-        // Fetch workout plans
+        if (usersResponse.data && usersResponse.data.data) {
+          console.log("User count fetched:", usersResponse.data.data.length);
+          setUserCount(usersResponse.data.data.length);
+        }
+      } catch (userError) {
+        console.error("Error fetching user data:", userError);
+        // Don't throw - continue with other requests
+      }
+
+      // Fetch workout plans with individual try/catch
+      try {
         const workoutPlansResponse = await axios.get(
           "http://localhost:8000/api/v1/auth/workout-plans",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        setWorkoutPlanCount(workoutPlansResponse.data.data.length);
 
-        // Fetch nutrition plans
+        if (workoutPlansResponse.data && workoutPlansResponse.data.data) {
+          setWorkoutPlanCount(workoutPlansResponse.data.data.length);
+        }
+      } catch (workoutError) {
+        console.error("Workout plans endpoint may not exist:", workoutError);
+        // Just set to 0 if the endpoint doesn't exist yet
+        setWorkoutPlanCount(0);
+      }
+
+      // Fetch nutrition plans with individual try/catch
+      try {
         const nutritionPlansResponse = await axios.get(
           "http://localhost:8000/api/v1/auth/nutrition-plans",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        setNutritionPlanCount(nutritionPlansResponse.data.data.length);
 
-        // Fetch supplements
+        if (nutritionPlansResponse.data && nutritionPlansResponse.data.data) {
+          setNutritionPlanCount(nutritionPlansResponse.data.data.length);
+        }
+      } catch (nutritionError) {
+        console.error(
+          "Nutrition plans endpoint may not exist:",
+          nutritionError
+        );
+        setNutritionPlanCount(0);
+      }
+
+      // Fetch supplements with individual try/catch
+      try {
         const supplementsResponse = await axios.get(
           "http://localhost:8000/api/v1/auth/supplement",
           {
@@ -60,25 +102,55 @@ const AdminDashboard = () => {
           }
         );
 
-        if (
-          supplementsResponse &&
-          supplementsResponse.data &&
-          supplementsResponse.data.data
-        ) {
+        if (supplementsResponse.data && supplementsResponse.data.data) {
           setSupplementCount(supplementsResponse.data.data.length);
-        } else {
-          console.warn(
-            "Supplement data structure is unexpected:",
-            supplementsResponse
-          );
-          message.warn("Could not determine supplement count");
         }
-      } catch (error) {
-        console.error("Error fetching data:", error);
+      } catch (supplementError) {
+        console.error("Error fetching supplement data:", supplementError);
+        setSupplementCount(0);
+      }
+    } catch (error) {
+      console.error("Error in fetchData:", error);
+      message.error("Failed to fetch dashboard statistics");
+    }
+  };
+
+  // Refresh button handler
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchData().finally(() => setIsRefreshing(false));
+  };
+
+  useEffect(() => {
+    // Initial data fetch
+    fetchData();
+
+    // Listen for window focus to refresh data
+    const handleFocus = () => {
+      fetchData();
+    };
+
+    // Listen for user data changes from UsersAdmin component
+    const handleUserDataChange = (event) => {
+      console.log("User data changed event received:", event.detail);
+
+      // If the event provides a count, use it directly
+      if (event.detail && event.detail.count !== undefined) {
+        console.log("Setting user count to:", event.detail.count);
+        setUserCount(event.detail.count);
+      } else {
+        // Otherwise refresh all data
+        fetchData();
       }
     };
 
-    fetchData();
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("user-data-change", handleUserDataChange);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("user-data-change", handleUserDataChange);
+    };
   }, []);
 
   const cardStyles = {
@@ -90,12 +162,27 @@ const AdminDashboard = () => {
 
   return (
     <>
-      <Title level={4} style={{ marginBottom: "24px", color: "#333" }}>
-        System Statistics
-      </Title>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "24px",
+        }}
+      >
+        <Title level={4} style={{ color: "#333", margin: 0 }}>
+          System Statistics
+        </Title>
+        <Button
+          icon={<ReloadOutlined />}
+          loading={isRefreshing}
+          onClick={handleRefresh}
+        >
+          Refresh Stats
+        </Button>
+      </div>
       <Divider style={{ margin: "16px 0" }} />
       <Row gutter={[24, 24]}>
-        {/* Your existing statistics cards */}
         <Col xs={24} sm={12} md={6}>
           <Card hoverable style={cardStyles} bodyStyle={{ padding: "24px" }}>
             <Statistic
@@ -127,7 +214,6 @@ const AdminDashboard = () => {
             />
           </Card>
         </Col>
-        {/* Include the other 3 statistic cards */}
         <Col xs={24} sm={12} md={6}>
           <Card hoverable style={cardStyles} bodyStyle={{ padding: "24px" }}>
             <Statistic

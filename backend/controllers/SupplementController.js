@@ -117,3 +117,130 @@ export const createSupplementController = async (req, res) => {
     });
   }
 };
+
+// Add this function to your existing controller file
+export const updateSupplementController = async (req, res) => {
+  const { id } = req.params;
+  const {
+    supplement_name, // Note: Using supplement_name to match DB column
+    company,
+    description,
+    tips,
+    energy,
+    protein,
+    carbs,
+    fat,
+    image_url,
+  } = req.body;
+
+  // Validate the ID
+  if (!id || isNaN(parseInt(id))) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid supplement ID provided",
+    });
+  }
+
+  // Validate required fields
+  if (!supplement_name || !description || !company) {
+    return res.status(400).json({
+      success: false,
+      message: "Supplement name, description, and company are required fields",
+    });
+  }
+
+  try {
+    // Prepare query with parameterized values
+    const query = `
+      UPDATE public."supplement" 
+      SET supplement_name = $1, company = $2, description = $3, 
+          tips = $4, energy = $5, protein = $6, carbs = $7, fat = $8, image_url = $9
+      WHERE supplement_id = $10
+      RETURNING *
+    `;
+
+    // Values array for parameterized query
+    const values = [
+      supplement_name,
+      company,
+      description,
+      tips || "",
+      energy || "0 kcal",
+      protein || "0g",
+      carbs || "0g",
+      fat || "0g",
+      image_url || "",
+      id,
+    ];
+
+    // Execute the query
+    const result = await con.query(query, values);
+
+    // Check if any row was updated
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Supplement not found",
+      });
+    }
+
+    // Return the updated supplement
+    res.status(200).json({
+      success: true,
+      message: "Supplement updated successfully!",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error updating supplement:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating supplement",
+      error: error.message,
+    });
+  }
+};
+
+// Add this to your SupplementController.js file
+
+export const deleteSupplementController = async (req, res) => {
+  const { id } = req.params;
+
+  // Validate the ID
+  if (!id || isNaN(parseInt(id))) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid supplement ID provided",
+    });
+  }
+
+  try {
+    // Check if supplement exists before deletion
+    const checkQuery = `SELECT * FROM public."supplement" WHERE supplement_id = $1`;
+    const checkResult = await con.query(checkQuery, [id]);
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Supplement not found",
+      });
+    }
+
+    // Delete the supplement
+    const deleteQuery = `DELETE FROM public."supplement" WHERE supplement_id = $1 RETURNING *`;
+    const deleteResult = await con.query(deleteQuery, [id]);
+
+    // Return success response
+    res.status(200).json({
+      success: true,
+      message: "Supplement deleted successfully!",
+      data: deleteResult.rows[0],
+    });
+  } catch (error) {
+    console.error("Error deleting supplement:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deleting supplement",
+      error: error.message,
+    });
+  }
+};

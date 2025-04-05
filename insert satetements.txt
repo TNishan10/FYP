@@ -1,0 +1,342 @@
+INSERT INTO UserDetails (userid, username, useremail, usercontact)
+VALUES ('U1', 'Nishan', 'nishan1@gmail.com', '9817665544'),
+       ('U2', 'Dikshya', 'dikshya55@gmail.com', '98472445567'),
+       ('U3', 'Kushal', 'kushal89@gmail.com', '9876544987'),
+       ('U4', 'Drishya', 'drishya7a@gmail.com', '9856889012'),
+       ('U5', 'Cal', 'cal57@gmail.com', '9899887764'),
+       ('U6', 'Samyam', 'samyam05@gmail.com', '9865887536'),
+       ('U7', 'Binita', 'binita98@gmail.com', '9765789935'),
+       ('U8', 'Ujwol', 'ujjwal65@gmail.com', '9867345123'),
+       ('U9', 'Tyson', 'tyson9@gmail.com', '9800067310'),
+       ('U10', 'Neha', 'neha4@gmail.com', '071-577-386'),
+       ('U11', 'Ojash', 'ojashcr7@gmail.com', '0176598809'),
+       ('U12', 'Anish', 'anish@gmail.com', '98764289007'),
+       ('U13', 'Nidhika', 'nidhishree@gmail.com', '9887859978'),
+       ('U14', 'Shubham', 'shubam6@gmail.com', '9809012345'),
+       ('U15', 'Shreeta', 'shreeta5@gmail.com', '9815998901');
+
+
+
+
+INSERT INTO project VALUES ('P-01', 'Enrolment System', TO_DATE('2024-09-18', 'YYYY-MM-DD'), TO_DATE('2024-12-09', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-02', 'Attendance System', TO_DATE('2024-01-10', 'YYYY-MM-DD'), TO_DATE('2024-09-21', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-03', 'Registration System', TO_DATE('2024-03-10', 'YYYY-MM-DD'), TO_DATE('2024-09-05', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-04', 'Rental System', TO_DATE('2024-10-10', 'YYYY-MM-DD'), TO_DATE('2024-12-25', 'YYYY-MM-DD'), 'Completed');
+INSERT INTO project VALUES ('P-05', 'Diet Tracking System', TO_DATE('2024-01-19', 'YYYY-MM-DD'), TO_DATE('2024-11-25', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-06', 'Expense Tracking System', TO_DATE('2024-05-01', 'YYYY-MM-DD'), TO_DATE('2025-02-01', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-07', 'Logistic Management System', TO_DATE('2024-08-15', 'YYYY-MM-DD'), TO_DATE('2025-07-30', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-08', 'Car Rental System', TO_DATE('2024-10-01', 'YYYY-MM-DD'), TO_DATE('2025-07-15', 'YYYY-MM-DD'), 'Completed');
+INSERT INTO project VALUES ('P-09', 'Phone Tracking System', TO_DATE('2024-12-15', 'YYYY-MM-DD'), TO_DATE('2025-08-17', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-10', 'daily tracking system', TO_DATE('2024-07-16', 'YYYY-MM-DD'), TO_DATE('2025-05-25', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-11', 'route management system', TO_DATE('2024-12-20', 'YYYY-MM-DD'), TO_DATE('2025-07-10', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-12', 'Payment system', TO_DATE('2024-06-01', 'YYYY-MM-DD'), TO_DATE('2024-12-11', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-13', 'fake news detection system', TO_DATE('2024-12-11', 'YYYY-MM-DD'), TO_DATE('2025-03-12', 'YYYY-MM-DD'), 'Ongoing');
+INSERT INTO project VALUES ('P-14', 'fake comment detection system', TO_DATE('2024-09-05', 'YYYY-MM-DD'), TO_DATE('2025-06-20', 'YYYY-MM-DD'), 'Completed');
+INSERT INTO project VALUES ('P-15', 'Movie recommendation system', TO_DATE('2024-10-01', 'YYYY-MM-DD'), TO_DATE('2025-10-01', 'YYYY-MM-DD'), 'Ongoing');
+
+INSERT INTO userprojectassignment VALUES ('UP-01', 'U1', 'P-01', 'Project Manager');
+INSERT INTO userprojectassignment VALUES ('UP-02', 'U2', 'P-02', 'Developer');
+INSERT INTO userprojectassignment VALUES ('UP-03', 'U3', 'P-03', 'Tester');
+INSERT INTO userprojectassignment VALUES ('UP-04', 'U4', 'P-04', 'Business Analyst');
+INSERT INTO userprojectassignment VALUES ('UP-05', 'U5', 'P-05', 'UI/UX Designer');
+INSERT INTO userprojectassignment VALUES ('UP-06', 'U6', 'P-06', 'Developer');
+INSERT INTO userprojectassignment VALUES ('UP-07', 'U7', 'P-07', 'Project Coordinator');
+INSERT INTO userprojectassignment VALUES ('UP-08', 'U8', 'P-08', 'Data Analyst');
+INSERT INTO userprojectassignment VALUES ('UP-09', 'U9', 'P-09', 'Quality Assurance');
+INSERT INTO userprojectassignment VALUES ('UP-10', 'U10', 'P-10', 'Software Engineer');
+INSERT INTO userprojectassignment VALUES ('UP-11', 'U11', 'P-11', 'Database Administrator');
+INSERT INTO userprojectassignment VALUES ('UP-12', 'U12', 'P-12', 'Security Specialist');
+INSERT INTO userprojectassignment VALUES ('UP-13', 'U13', 'P-13', 'Machine Learning Engineer');
+INSERT INTO userprojectassignment VALUES ('UP-14', 'U14', 'P-14', 'Cybersecurity Analyst');
+INSERT INTO userprojectassignment VALUES ('UP-15', 'U15', 'P-15', 'Full Stack Developer');
+INSERT INTO userprojectassignment VALUES ('UP-16', 'U1', 'P-03', 'Developer');
+INSERT INTO userprojectassignment VALUES ('UP-17', 'U2', 'P-04', 'Tester');
+INSERT INTO userprojectassignment VALUES ('UP-18', 'U3', 'P-05', 'Quality Assurance');
+INSERT INTO userprojectassignment VALUES ('UP-19', 'U4', 'P-06', 'Project Manager');
+INSERT INTO userprojectassignment VALUES ('UP-20', 'U5', 'P-07', 'Data Scientist');
+INSERT INTO userprojectassignment VALUES ('UP-21', 'U6', 'P-08', 'Software Engineer');
+INSERT INTO userprojectassignment VALUES ('UP-22', 'U7', 'P-09', 'Cloud Engineer');
+INSERT INTO userprojectassignment VALUES ('UP-23', 'U8', 'P-10', 'Backend Developer');
+INSERT INTO userprojectassignment VALUES ('UP-24', 'U9', 'P-11', 'Frontend Developer');
+INSERT INTO userprojectassignment VALUES ('UP-25', 'U10', 'P-12', 'System Architect');
+INSERT INTO userprojectassignment VALUES ('UP-26', 'U11', 'P-13', 'AI Engineer');
+INSERT INTO userprojectassignment VALUES ('UP-27', 'U12', 'P-14', 'Network Engineer');
+INSERT INTO userprojectassignment VALUES ('UP-28', 'U13', 'P-15', 'DevOps Engineer');
+INSERT INTO userprojectassignment VALUES ('UP-29', 'U14', 'P-01', 'Software Tester');
+INSERT INTO userprojectassignment VALUES ('UP-30', 'U15', 'P-02', 'Scrum Master');
+COMMIT;
+
+
+INSERT INTO task VALUES ('T-01', 'Form Creation', TO_DATE('2024-09-18', 'YYYY-MM-DD'), TO_DATE('2024-09-25', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-02', 'Dashboard Setup', TO_DATE('2024-09-20', 'YYYY-MM-DD'), TO_DATE('2024-09-30', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-03', 'Database Design', TO_DATE('2024-01-15', 'YYYY-MM-DD'), TO_DATE('2024-01-29', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-04', 'Payment Gateway Integration', TO_DATE('2024-03-19', 'YYYY-MM-DD'), TO_DATE('2024-04-20', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-05', 'User Profile Setup', TO_DATE('2024-03-15', 'YYYY-MM-DD'), TO_DATE('2024-03-29', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-06', 'Tracking System Setup', TO_DATE('2024-05-11', 'YYYY-MM-DD'), TO_DATE('2024-06-10', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-07', 'User Feedback Collection', TO_DATE('2024-06-01', 'YYYY-MM-DD'), TO_DATE('2024-06-10', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-08', 'Inventory Setup', TO_DATE('2024-08-18', 'YYYY-MM-DD'), TO_DATE('2024-08-30', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-09', 'Routing Setup', TO_DATE('2024-12-20', 'YYYY-MM-DD'), TO_DATE('2024-12-28', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-10', 'Geolocation Setup', TO_DATE('2024-12-28', 'YYYY-MM-DD'), TO_DATE('2025-01-25', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-11', 'User Management', TO_DATE('2024-07-26', 'YYYY-MM-DD'), TO_DATE('2024-08-30', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-12', 'Profile Integration', TO_DATE('2024-09-05', 'YYYY-MM-DD'), TO_DATE('2024-09-15', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-13', 'Algorithm Setup', TO_DATE('2024-10-09', 'YYYY-MM-DD'), TO_DATE('2024-12-05', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-14', 'Transaction Setup', TO_DATE('2024-10-10', 'YYYY-MM-DD'), TO_DATE('2024-10-15', 'YYYY-MM-DD'));
+INSERT INTO task VALUES ('T-15', 'Security Setup', TO_DATE('2024-12-01', 'YYYY-MM-DD'), TO_DATE('2024-12-10', 'YYYY-MM-DD'));
+
+
+INSERT INTO usertaskprojectassignment VALUES ('UP-01', 'T-03');
+INSERT INTO usertaskprojectassignment VALUES ('UP-02', 'T-07');
+INSERT INTO usertaskprojectassignment VALUES ('UP-03', 'T-01');
+INSERT INTO usertaskprojectassignment VALUES ('UP-04', 'T-05');
+INSERT INTO usertaskprojectassignment VALUES ('UP-05', 'T-09');
+INSERT INTO usertaskprojectassignment VALUES ('UP-06', 'T-02');
+INSERT INTO usertaskprojectassignment VALUES ('UP-07', 'T-11');
+INSERT INTO usertaskprojectassignment VALUES ('UP-08', 'T-04');
+INSERT INTO usertaskprojectassignment VALUES ('UP-09', 'T-14');
+INSERT INTO usertaskprojectassignment VALUES ('UP-10', 'T-08');
+INSERT INTO usertaskprojectassignment VALUES ('UP-11', 'T-12');
+INSERT INTO usertaskprojectassignment VALUES ('UP-12', 'T-06');
+INSERT INTO usertaskprojectassignment VALUES ('UP-13', 'T-10');
+INSERT INTO usertaskprojectassignment VALUES ('UP-14', 'T-13');
+INSERT INTO usertaskprojectassignment VALUES ('UP-15', 'T-15');
+INSERT INTO usertaskprojectassignment VALUES ('UP-16', 'T-01');
+INSERT INTO usertaskprojectassignment VALUES ('UP-17', 'T-02');
+INSERT INTO usertaskprojectassignment VALUES ('UP-18', 'T-03');
+INSERT INTO usertaskprojectassignment VALUES ('UP-19', 'T-04');
+INSERT INTO usertaskprojectassignment VALUES ('UP-20', 'T-05');
+INSERT INTO usertaskprojectassignment VALUES ('UP-21', 'T-06');
+INSERT INTO usertaskprojectassignment VALUES ('UP-22', 'T-07');
+INSERT INTO usertaskprojectassignment VALUES ('UP-23', 'T-08');
+INSERT INTO usertaskprojectassignment VALUES ('UP-24', 'T-09');
+INSERT INTO usertaskprojectassignment VALUES ('UP-25', 'T-10');
+INSERT INTO usertaskprojectassignment VALUES ('UP-26', 'T-11');
+INSERT INTO usertaskprojectassignment VALUES ('UP-27', 'T-12');
+INSERT INTO usertaskprojectassignment VALUES ('UP-28', 'T-13');
+INSERT INTO usertaskprojectassignment VALUES ('UP-29', 'T-14');
+INSERT INTO usertaskprojectassignment VALUES ('UP-30', 'T-15');
+
+COMMIT;
+
+
+INSERT INTO "Resource" VALUES ('R-01', 'Sensor', 'Hardware', 'Temperature and humidity sensors for monitoring.');
+INSERT INTO "Resource" VALUES ('R-02', 'Laptop', 'Hardware', 'High-performance laptop for software development.');
+INSERT INTO "Resource" VALUES ('R-03', 'Monitor', 'Hardware', '24-inch LED monitor for extended display.');
+INSERT INTO "Resource" VALUES ('R-04', 'Workshop', 'Facility', 'Space for hands-on training and development.');
+INSERT INTO "Resource" VALUES ('R-05', 'Meeting Hall', 'Facility', 'Conference hall for discussions and presentations.');
+INSERT INTO "Resource" VALUES ('R-06', 'Printer', 'Hardware', 'Color laser printer for document printing.');
+INSERT INTO "Resource" VALUES ('R-07', 'Microphone', 'Audio Equipment', 'Wireless microphone for clear audio communication.');
+INSERT INTO "Resource" VALUES ('R-08', 'Survey Forms', 'Document', 'Printed forms for collecting survey data.');
+INSERT INTO "Resource" VALUES ('R-09', 'Stable Internet', 'Service', 'Reliable high-speed internet connection.');
+INSERT INTO "Resource" VALUES ('R-10', 'Reliable Datasets', 'Data', 'Verified and well-structured datasets for analysis.');
+INSERT INTO "Resource" VALUES ('R-11', 'Chips', 'Hardware', 'Microcontroller chips for embedded system projects.');
+INSERT INTO "Resource" VALUES ('R-12', 'Desktop PC', 'Hardware', 'High-performance desktop for development and testing.');
+INSERT INTO "Resource" VALUES ('R-13', 'Server Rack', 'Hardware', 'Rack for organizing and securing server equipment.');
+INSERT INTO "Resource" VALUES ('R-14', 'External Hard Drive', 'Storage', '1TB external hard drive for data backup.');
+INSERT INTO "Resource" VALUES ('R-15', 'Networking Switch', 'Networking', 'Managed switch for efficient network connectivity.');
+commit;
+
+
+INSERT INTO "Comment" VALUES ('C-01', 'Review the profile layout.', TO_DATE('2024-09-19', 'YYYY-MM-DD'), 'U13', 'T-05');
+INSERT INTO "Comment" VALUES ('C-02', 'Fix validation error.', TO_DATE('2024-09-20', 'YYYY-MM-DD'), 'U2', 'T-01');
+INSERT INTO "Comment" VALUES ('C-03', 'Update feedbacks reports.', TO_DATE('2024-09-22', 'YYYY-MM-DD'), 'U6', 'T-07');
+INSERT INTO "Comment" VALUES ('C-04', 'Enhance geolocation.', TO_DATE('2024-09-25', 'YYYY-MM-DD'), 'U9', 'T-10');
+INSERT INTO "Comment" VALUES ('C-05', 'Enhance UI for tracking.', TO_DATE('2024-09-28', 'YYYY-MM-DD'), 'U1', 'T-06');
+INSERT INTO "Comment" VALUES ('C-06', 'Test inventory system API.', TO_DATE('2024-10-01', 'YYYY-MM-DD'), 'U5', 'T-08');
+INSERT INTO "Comment" VALUES ('C-07', 'Update inventory home page.', TO_DATE('2024-10-03', 'YYYY-MM-DD'), 'U5', 'T-08');
+INSERT INTO "Comment" VALUES ('C-08', 'Improve dashboard design.', TO_DATE('2024-10-05', 'YYYY-MM-DD'), 'U2', 'T-02');
+INSERT INTO "Comment" VALUES ('C-09', 'Add a logout feature.', TO_DATE('2024-10-06', 'YYYY-MM-DD'), 'U12', 'T-11');
+INSERT INTO "Comment" VALUES ('C-10', 'Optimize database query.', TO_DATE('2024-10-08', 'YYYY-MM-DD'), 'U7', 'T-10');
+INSERT INTO "Comment" VALUES ('C-11', 'Update diet tracker design.', TO_DATE('2024-10-09', 'YYYY-MM-DD'), 'U1', 'T-06');
+INSERT INTO "Comment" VALUES ('C-12', 'Add additional filters.', TO_DATE('2024-10-10', 'YYYY-MM-DD'), 'U15', 'T-02');
+INSERT INTO "Comment" VALUES ('C-13', 'Fix navigation bugs.', TO_DATE('2024-10-11', 'YYYY-MM-DD'), 'U14', 'T-02');
+INSERT INTO "Comment" VALUES ('C-14', 'Enhance real-time tracking.', TO_DATE('2024-10-12', 'YYYY-MM-DD'), 'U1', 'T-06');
+INSERT INTO "Comment" VALUES ('C-15', 'Improve notification system.', TO_DATE('2024-10-13', 'YYYY-MM-DD'), 'U3', 'T-06');
+INSERT INTO "Comment" VALUES ('C-16', 'Document API endpoints.', TO_DATE('2024-10-15', 'YYYY-MM-DD'), 'U7', 'T-14');
+INSERT INTO "Comment" VALUES ('C-17', 'Update the user page design.', TO_DATE('2024-10-16', 'YYYY-MM-DD'), 'U14', 'T-11');
+INSERT INTO "Comment" VALUES ('C-18', 'Fix responsive layout.', TO_DATE('2024-10-17', 'YYYY-MM-DD'), 'U13', 'T-05');
+INSERT INTO "Comment" VALUES ('C-19', 'Test two-factor authentication support.', TO_DATE('2024-10-18', 'YYYY-MM-DD'), 'U8', 'T-15');
+INSERT INTO "Comment" VALUES ('C-20', 'Optimize  backend code.', TO_DATE('2024-10-19', 'YYYY-MM-DD'), 'U1', 'T-06');
+INSERT INTO "Comment" VALUES ('C-21', 'Enhance error tracking.', TO_DATE('2024-10-20', 'YYYY-MM-DD'), 'U3', 'T-04');
+INSERT INTO "Comment" VALUES ('C-22', 'Refactor code for reusability.', TO_DATE('2024-10-21', 'YYYY-MM-DD'), 'U4', 'T-13');
+INSERT INTO "Comment" VALUES ('C-23', 'Add more options.', TO_DATE('2024-10-22', 'YYYY-MM-DD'), 'U4', 'T-12');
+INSERT INTO "Comment" VALUES ('C-24', 'Update constraints.', TO_DATE('2024-10-23', 'YYYY-MM-DD'), 'U2', 'T-03');
+INSERT INTO "Comment" VALUES ('C-25', 'Add login error messages.', TO_DATE('2024-10-24', 'YYYY-MM-DD'), 'U10', 'T-09');
+INSERT INTO "Comment" VALUES ('C-26', 'Improve performance.', TO_DATE('2024-10-25', 'YYYY-MM-DD'), 'U6', 'T-07');
+INSERT INTO "Comment" VALUES ('C-27', 'Create new users.', TO_DATE('2024-10-26', 'YYYY-MM-DD'), 'U8', 'T-05');
+INSERT INTO "Comment" VALUES ('C-28', 'Fix issue with notifications.', TO_DATE('2024-10-27', 'YYYY-MM-DD'), 'U13', 'T-02');
+INSERT INTO "Comment" VALUES ('C-29', 'Update algorithms.', TO_DATE('2024-10-28', 'YYYY-MM-DD'), 'U4', 'T-13');
+INSERT INTO "Comment" VALUES ('C-30', 'Add colors.', TO_DATE('2024-10-29', 'YYYY-MM-DD'), 'U13', 'T-05');
+COMMIT;
+
+INSERT INTO milestone VALUES ('M-01', 'Prototype Design', TO_DATE('2024-10-01', 'YYYY-MM-DD'), 'P-01');
+INSERT INTO milestone VALUES ('M-02', 'Database Setup', TO_DATE('2024-10-15', 'YYYY-MM-DD'), 'P-01');
+INSERT INTO milestone VALUES ('M-03', 'System Testing', TO_DATE('2024-11-20', 'YYYY-MM-DD'), 'P-01');
+INSERT INTO milestone VALUES ('M-04', 'Final Deployment', TO_DATE('2024-12-05', 'YYYY-MM-DD'), 'P-01');
+INSERT INTO milestone VALUES ('M-05', 'Requirement Analysis', TO_DATE('2024-01-25', 'YYYY-MM-DD'), 'P-02');
+INSERT INTO milestone VALUES ('M-06', 'Feature Implementation', TO_DATE('2024-06-15', 'YYYY-MM-DD'), 'P-02');
+INSERT INTO milestone VALUES ('M-07', 'System Integration', TO_DATE('2024-09-01', 'YYYY-MM-DD'), 'P-02');
+INSERT INTO milestone VALUES ('M-08', 'Initial Mockup', TO_DATE('2024-03-20', 'YYYY-MM-DD'), 'P-03');
+INSERT INTO milestone VALUES ('M-09', 'Alpha Release', TO_DATE('2024-07-15', 'YYYY-MM-DD'), 'P-03');
+INSERT INTO milestone VALUES ('M-10', 'User Feedback Collection', TO_DATE('2024-08-20', 'YYYY-MM-DD'), 'P-03');
+INSERT INTO milestone VALUES ('M-11', 'Rental Module Design', TO_DATE('2024-10-20', 'YYYY-MM-DD'), 'P-04');
+INSERT INTO milestone VALUES ('M-12', 'Payment Gateway Integration', TO_DATE('2024-12-10', 'YYYY-MM-DD'), 'P-04');
+INSERT INTO milestone VALUES ('M-13', 'Feature Planning', TO_DATE('2024-03-01', 'YYYY-MM-DD'), 'P-05');
+INSERT INTO milestone VALUES ('M-14', 'User Authentication Setup', TO_DATE('2024-07-01', 'YYYY-MM-DD'), 'P-05');
+INSERT INTO milestone VALUES ('M-15', 'Beta Testing', TO_DATE('2024-11-10', 'YYYY-MM-DD'), 'P-05');
+INSERT INTO milestone VALUES ('M-16', 'Expense Analysis Module', TO_DATE('2024-07-01', 'YYYY-MM-DD'), 'P-06');
+INSERT INTO milestone VALUES ('M-17', 'Report Generation Feature', TO_DATE('2024-12-15', 'YYYY-MM-DD'), 'P-06');
+INSERT INTO milestone VALUES ('M-18', 'Backend Development', TO_DATE('2024-11-01', 'YYYY-MM-DD'), 'P-07');
+INSERT INTO milestone VALUES ('M-19', 'API Integration', TO_DATE('2025-04-01', 'YYYY-MM-DD'), 'P-07');
+INSERT INTO milestone VALUES ('M-20', 'User Registration Feature', TO_DATE('2024-10-15', 'YYYY-MM-DD'), 'P-08');
+INSERT INTO milestone VALUES ('M-21', 'Admin Panel Setup', TO_DATE('2025-05-01', 'YYYY-MM-DD'), 'P-08');
+INSERT INTO milestone VALUES ('M-22', 'Geolocation API Integration', TO_DATE('2025-02-15', 'YYYY-MM-DD'), 'P-09');
+INSERT INTO milestone VALUES ('M-23', 'User Interface Update', TO_DATE('2025-06-01', 'YYYY-MM-DD'), 'P-09');
+INSERT INTO milestone VALUES ('M-24', 'Daily Log Feature', TO_DATE('2024-12-01', 'YYYY-MM-DD'), 'P-10');
+INSERT INTO milestone VALUES ('M-25', 'Analytics Dashboard', TO_DATE('2025-04-20', 'YYYY-MM-DD'), 'P-10');
+INSERT INTO milestone VALUES ('M-26', 'Secure Payment Gateway', TO_DATE('2024-09-01', 'YYYY-MM-DD'), 'P-12');
+INSERT INTO milestone VALUES ('M-27', 'Transaction Report Module', TO_DATE('2024-11-20', 'YYYY-MM-DD'), 'P-12');
+INSERT INTO milestone VALUES ('M-28', 'Dataset Preparation', TO_DATE('2025-01-20', 'YYYY-MM-DD'), 'P-13');
+INSERT INTO milestone VALUES ('M-29', 'AI Model Training', TO_DATE('2025-02-20', 'YYYY-MM-DD'), 'P-13');
+INSERT INTO milestone VALUES ('M-30', 'Recommendation Algorithm', TO_DATE('2025-08-01', 'YYYY-MM-DD'), 'P-15');
+
+INSERT INTO subtask VALUES
+('st-01', 'Form Validation', 'Validate input fields', TO_DATE('2024-09-18', 'YYYY-MM-DD'), TO_DATE('2024-09-20', 'YYYY-MM-DD'), 'Pending', 'T-01', 'U1');
+
+INSERT INTO subtask VALUES
+('st-02', 'Form Submission', 'Ensure data is submitted correctly', TO_DATE('2024-09-20', 'YYYY-MM-DD'), TO_DATE('2024-09-25', 'YYYY-MM-DD'), 'Pending', 'T-01', 'U11');
+
+INSERT INTO subtask VALUES
+('st-03', 'UI Design', 'Create dashboard UI', TO_DATE('2024-09-20', 'YYYY-MM-DD'), TO_DATE('2024-09-25', 'YYYY-MM-DD'), 'Pending', 'T-02', 'U2');
+
+INSERT INTO subtask VALUES
+('st-04', 'Chart Integration', 'Add charts to dashboard', TO_DATE('2024-09-26', 'YYYY-MM-DD'), TO_DATE('2024-09-30', 'YYYY-MM-DD'), 'Pending', 'T-02', 'U13');
+
+INSERT INTO subtask VALUES
+('st-05', 'Schema Design', 'Design initial database schema', TO_DATE('2024-01-15', 'YYYY-MM-DD'), TO_DATE('2024-01-20', 'YYYY-MM-DD'), 'Pending', 'T-03', 'U2');
+
+INSERT INTO subtask VALUES
+('st-06', 'Normalization', 'Normalize database tables', TO_DATE('2024-01-21', 'YYYY-MM-DD'), TO_DATE('2024-01-29', 'YYYY-MM-DD'), 'Pending', 'T-03', 'U15');
+
+INSERT INTO subtask VALUES
+('st-07', 'API Integration', 'Setup APIs for payments', TO_DATE('2024-03-19', 'YYYY-MM-DD'), TO_DATE('2024-03-25', 'YYYY-MM-DD'), 'Pending', 'T-04', 'U3');
+
+INSERT INTO subtask VALUES
+('st-08', 'Testing', 'Test user profiles', TO_DATE('2024-03-26', 'YYYY-MM-DD'), TO_DATE('2024-04-20', 'YYYY-MM-DD'), 'Pending', 'T-05', 'U13');
+
+INSERT INTO subtask VALUES
+('st-09', 'Tracking system enhancement', 'Allow users to track their details', TO_DATE('2024-03-15', 'YYYY-MM-DD'), TO_DATE('2024-03-18', 'YYYY-MM-DD'), 'Pending', 'T-06', 'U1');
+
+INSERT INTO subtask VALUES
+('st-10', 'Inventory Home Page Update', 'Enhance home page of inventory system.', TO_DATE('2024-08-18', 'YYYY-MM-DD'), TO_DATE('2024-08-30', 'YYYY-MM-DD'), 'Pending', 'T-08', 'U5');
+
+INSERT INTO subtask VALUES
+('st-11', 'Update queries and filters', 'Implement filters like fiscal year', TO_DATE('2024-05-11', 'YYYY-MM-DD'), TO_DATE('2024-05-20', 'YYYY-MM-DD'), 'Pending', 'T-02', 'U13');
+
+INSERT INTO subtask VALUES
+('st-12', 'Report Generation', 'Generate tracking reports', TO_DATE('2024-05-21', 'YYYY-MM-DD'), TO_DATE('2024-06-10', 'YYYY-MM-DD'), 'Pending', 'T-06', 'U3');
+
+INSERT INTO subtask VALUES
+('st-13', 'Feedback Form', 'Create feedback collection form', TO_DATE('2024-06-01', 'YYYY-MM-DD'), TO_DATE('2024-06-05', 'YYYY-MM-DD'), 'Pending', 'T-07', 'U6');
+
+INSERT INTO subtask VALUES
+('st-14', 'Security Analysis', 'Analyze security measures', TO_DATE('2024-06-06', 'YYYY-MM-DD'), TO_DATE('2024-06-10', 'YYYY-MM-DD'), 'Pending', 'T-15', 'U12');
+
+INSERT INTO subtask VALUES
+('st-15', 'Tracking system testing', 'Test the system', TO_DATE('2024-08-18', 'YYYY-MM-DD'), TO_DATE('2024-08-25', 'YYYY-MM-DD'), 'Pending', 'T-06', 'U1');
+
+INSERT INTO subtask VALUES
+('st-16', 'Stock Alerts', 'Notify users of low stock', TO_DATE('2024-08-26', 'YYYY-MM-DD'), TO_DATE('2024-08-30', 'YYYY-MM-DD'), 'Pending', 'T-08', 'U5');
+
+INSERT INTO subtask VALUES
+('st-17', 'Routing Algorithm', 'Design routing algorithm', TO_DATE('2024-12-20', 'YYYY-MM-DD'), TO_DATE('2024-12-23', 'YYYY-MM-DD'), 'Pending', 'T-09', 'U10');
+
+INSERT INTO subtask VALUES
+('st-18', 'Payment Testing', 'Test payment setup', TO_DATE('2024-12-24', 'YYYY-MM-DD'), TO_DATE('2024-12-28', 'YYYY-MM-DD'), 'Pending', 'T-04', 'U3');
+
+INSERT INTO subtask VALUES
+('st-19', 'Map Integration', 'Integrate maps for geolocation', TO_DATE('2024-12-28', 'YYYY-MM-DD'), TO_DATE('2025-01-05', 'YYYY-MM-DD'), 'Pending', 'T-10', 'U9');
+
+INSERT INTO subtask VALUES
+('st-20', 'Location Alerts', 'Set up geolocation alerts', TO_DATE('2025-01-06', 'YYYY-MM-DD'), TO_DATE('2025-01-25', 'YYYY-MM-DD'), 'Pending', 'T-10', 'U9');
+
+INSERT INTO subtask VALUES
+('st-21', 'UI Testing', 'Perform UI testing for forms', TO_DATE('2024-09-18', 'YYYY-MM-DD'), TO_DATE('2024-09-22', 'YYYY-MM-DD'), 'Pending', 'T-12', 'U10');
+
+INSERT INTO subtask VALUES
+('st-22', 'Backend API Setup', 'Set up APIs for form submission', TO_DATE('2024-09-23', 'YYYY-MM-DD'), TO_DATE('2024-09-30', 'YYYY-MM-DD'), 'Pending', 'T-01', 'U5');
+
+INSERT INTO subtask VALUES
+('st-23', 'Test Dashboard Features', 'Test functionality of the dashboard', TO_DATE('2024-09-25', 'YYYY-MM-DD'), TO_DATE('2024-09-28', 'YYYY-MM-DD'), 'Pending', 'T-02', 'U13');
+
+INSERT INTO subtask VALUES
+('st-24', 'Data Synchronization', 'Sync routes data with the database', TO_DATE('2024-09-29', 'YYYY-MM-DD'), TO_DATE('2024-09-30', 'YYYY-MM-DD'), 'Pending', 'T-09', 'U10');
+
+INSERT INTO subtask VALUES
+('st-25', 'Database Query Optimization', 'Optimize queries for performance', TO_DATE('2024-01-15', 'YYYY-MM-DD'), TO_DATE('2024-01-20', 'YYYY-MM-DD'), 'Pending', 'T-04', 'U3');
+
+INSERT INTO subtask VALUES
+('st-26', 'Schema Design', 'Ensure schema is properly drawn.', TO_DATE('2024-01-21', 'YYYY-MM-DD'), TO_DATE('2024-01-29', 'YYYY-MM-DD'), 'Pending', 'T-03', 'U6');
+
+INSERT INTO subtask VALUES
+('st-27', 'Feedback Analysis', 'Analyze feedback details', TO_DATE('2024-03-21', 'YYYY-MM-DD'), TO_DATE('2024-03-25', 'YYYY-MM-DD'), 'Pending', 'T-07', 'U6');
+
+INSERT INTO subtask VALUES
+('st-28', 'Frontend Validation', 'Validate frontend data inputs', TO_DATE('2024-03-26', 'YYYY-MM-DD'), TO_DATE('2024-04-02', 'YYYY-MM-DD'), 'Pending', 'T-12', 'U4');
+
+INSERT INTO subtask VALUES
+('st-29', 'Profile Page Setup', 'Setup profile page for users', TO_DATE('2024-03-19', 'YYYY-MM-DD'), TO_DATE('2024-03-29', 'YYYY-MM-DD'), 'Pending', 'T-11', 'U14');
+
+INSERT INTO subtask VALUES
+('st-30', 'Security Testing', 'Test security features for tracking system', TO_DATE('2024-03-25', 'YYYY-MM-DD'), TO_DATE('2024-03-30', 'YYYY-MM-DD'), 'Pending', 'T-06', 'U1');
+
+INSERT INTO taskresource VALUES ('T-01', 'R-01');
+INSERT INTO taskresource VALUES ('T-02', 'R-02');
+INSERT INTO taskresource VALUES ('T-03', 'R-03');
+INSERT INTO taskresource VALUES ('T-04', 'R-04');
+INSERT INTO taskresource VALUES ('T-05', 'R-05');
+INSERT INTO taskresource VALUES ('T-06', 'R-06');
+INSERT INTO taskresource VALUES ('T-07', 'R-07');
+INSERT INTO taskresource VALUES ('T-08', 'R-08');
+INSERT INTO taskresource VALUES ('T-09', 'R-09');
+INSERT INTO taskresource VALUES ('T-10', 'R-10');
+INSERT INTO taskresource VALUES ('T-11', 'R-11');
+INSERT INTO taskresource VALUES ('T-12', 'R-12');
+INSERT INTO taskresource VALUES ('T-13', 'R-13');
+INSERT INTO taskresource VALUES ('T-14', 'R-14');
+INSERT INTO taskresource VALUES ('T-15', 'R-15');
+INSERT INTO taskresource VALUES ('T-01', 'R-02');
+INSERT INTO taskresource VALUES ('T-02', 'R-03');
+INSERT INTO taskresource VALUES ('T-03', 'R-04');
+INSERT INTO taskresource VALUES ('T-04', 'R-05');
+INSERT INTO taskresource VALUES ('T-05', 'R-06');
+INSERT INTO taskresource VALUES ('T-06', 'R-07');
+INSERT INTO taskresource VALUES ('T-07', 'R-08');
+INSERT INTO taskresource VALUES ('T-08', 'R-09');
+INSERT INTO taskresource VALUES ('T-09', 'R-10');
+INSERT INTO taskresource VALUES ('T-10', 'R-11');
+INSERT INTO taskresource VALUES ('T-11', 'R-12');
+INSERT INTO taskresource VALUES ('T-12', 'R-13');
+INSERT INTO taskresource VALUES ('T-13', 'R-14');
+INSERT INTO taskresource VALUES ('T-14', 'R-15');
+INSERT INTO taskresource VALUES ('T-15', 'R-01');
+
+
+SELECT userId, userName, projectId, projectName, Completed_Tasks
+FROM (
+    SELECT
+        ud.userId,
+        ud.userName,
+        pd.projectId,
+        pd.projectName,
+        COUNT(DISTINCT td.taskId) AS Completed_Tasks,
+        RANK() OVER (PARTITION BY pd.projectId ORDER BY COUNT(DISTINCT td.taskId) DESC) AS rank
+    FROM UserDetails ud
+    JOIN UserProjectDetails upd ON ud.userId = upd.userId
+    JOIN Project pd ON upd.projectId = pd.projectId
+    JOIN UserProjectTaskDetails uptd ON upd.userProjectId = utpa.userProjectId
+    JOIN TaskDetails td ON uptd.taskId = td.taskId
+    WHERE td.taskStatus = 'Completed' and pd.projectId = :projectId
+    GROUP BY ud.userId, ud.userName, pd.projectId, pd.projectName
+)
+WHERE rank <= 3
+

@@ -10,7 +10,7 @@ import {
   MedicineBoxOutlined,
   HomeOutlined,
 } from "@ant-design/icons";
-import { Link, useNavigate, Outlet, useLocation } from "react-router-dom";
+import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import { MdLogout } from "react-icons/md";
 import { useAuth } from "../../contexts/AuthContext";
@@ -67,6 +67,40 @@ const AdminLayout = () => {
     setCollapsed(!collapsed);
   };
 
+  // Menu items defined using the new API format
+  const menuItems = [
+    {
+      key: "1",
+      icon: <DashboardOutlined style={{ fontSize: "18px" }} />,
+      label: "Dashboard",
+      onClick: () => navigate("/admin"),
+    },
+    {
+      key: "2",
+      icon: <HeartOutlined style={{ fontSize: "18px" }} />,
+      label: "Workout Plans",
+      onClick: () => navigate("/admin/workout-plans"),
+    },
+    {
+      key: "3",
+      icon: <AppleOutlined style={{ fontSize: "18px" }} />,
+      label: "Nutrition Plans",
+      onClick: () => navigate("/admin/nutrition-plans"),
+    },
+    {
+      key: "4",
+      icon: <MedicineBoxOutlined style={{ fontSize: "18px" }} />,
+      label: "Supplements",
+      onClick: () => navigate("/admin/supplements"),
+    },
+    {
+      key: "5",
+      icon: <UserOutlined style={{ fontSize: "18px" }} />,
+      label: "Users",
+      onClick: () => navigate("/admin/users"),
+    },
+  ];
+
   return (
     <Layout style={{ minHeight: "100vh", background: "#f8f9fa" }}>
       <Sider
@@ -99,44 +133,8 @@ const AdminLayout = () => {
           theme="dark"
           mode="inline"
           defaultSelectedKeys={[getSelectedKey()]}
-          selectedKeys={[getSelectedKey()]}
-          style={{ background: "transparent", borderRight: 0 }}
-        >
-          <Menu.Item
-            key="1"
-            icon={<DashboardOutlined style={{ fontSize: "18px" }} />}
-          >
-            <Link to="/admin">Dashboard</Link>
-          </Menu.Item>
-
-          <Menu.Item
-            key="2"
-            icon={<HeartOutlined style={{ fontSize: "18px" }} />}
-          >
-            <Link to="/admin/workout-plans">Workout Plans</Link>
-          </Menu.Item>
-
-          <Menu.Item
-            key="3"
-            icon={<AppleOutlined style={{ fontSize: "18px" }} />}
-          >
-            <Link to="/admin/nutrition-plans">Nutrition Plans</Link>
-          </Menu.Item>
-
-          <Menu.Item
-            key="4"
-            icon={<MedicineBoxOutlined style={{ fontSize: "18px" }} />}
-          >
-            <Link to="/admin/supplements">Supplements</Link>
-          </Menu.Item>
-
-          <Menu.Item
-            key="5"
-            icon={<UserOutlined style={{ fontSize: "18px" }} />}
-          >
-            <Link to="/admin/users">Users</Link>
-          </Menu.Item>
-        </Menu>
+          items={menuItems}
+        />
       </Sider>
 
       <Layout className="site-layout">

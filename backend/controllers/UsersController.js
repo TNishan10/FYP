@@ -402,3 +402,247 @@ export const verifyUser = async (req, res) => {
     });
   }
 };
+
+// Add this to your UsersController.js file
+export const createUserByAdmin = async (req, res) => {
+  try {
+    const {
+      user_name,
+      user_email,
+      password,
+      user_role,
+      is_verified,
+      account_status,
+    } = req.body;
+
+    // Validate required fields
+    if (!user_name || !user_email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email and password are required fields",
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(user_email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid email address",
+      });
+    }
+
+    // Check if user already exists
+    const checkUserQuery = `SELECT * FROM public."users" WHERE user_email = $1`;
+    const checkUserResult = await con.query(checkUserQuery, [user_email]);
+
+    if (checkUserResult.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "User with this email already exists",
+      });
+    }
+
+    // Hash the password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Set default values for optional fields
+    const role = user_role || "user";
+    const verified = is_verified || false;
+    const status = account_status || "active";
+
+    // Updated column name from "password" to "user_password"
+    const insertQuery = `
+      INSERT INTO public."users" 
+        (user_name, user_email, user_password, user_role, is_verified, account_status) 
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING user_id, user_name, user_email, user_role, is_verified, account_status
+    `;
+    const values = [
+      user_name,
+      user_email,
+      hashedPassword,
+      role,
+      verified,
+      status,
+    ];
+    const result = await con.query(insertQuery, values);
+
+    // Return success response
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error creating user:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating user",
+      error: error.message,
+    });
+  }
+};
+
+export const updateUserByAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      user_name,
+      user_email,
+      password,
+      user_role,
+      is_verified,
+      account_status,
+    } = req.body;
+
+    // Check if user exists
+    const checkUserQuery = `SELECT * FROM public."users" WHERE user_id = $1`;
+    const checkUserResult = await con.query(checkUserQuery, [id]);
+
+    if (checkUserResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Prepare update fields
+    const updateFields = [];
+    const values = [];
+    let paramCounter = 1;
+
+    if (user_name) {
+      updateFields.push(`user_name = $${paramCounter}`);
+      values.push(user_name);
+      paramCounter++;
+    }
+
+    if (user_email) {
+      // Check if email is already taken by another user
+      if (user_email !== checkUserResult.rows[0].user_email) {
+        const emailCheckQuery = `SELECT * FROM public."users" WHERE user_email = $1 AND user_id != $2`;
+        const emailCheckResult = await con.query(emailCheckQuery, [
+          user_email,
+          id,
+        ]);
+
+        if (emailCheckResult.rows.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: "Email is already in use by another user",
+          });
+        }
+      }
+
+      updateFields.push(`user_email = $${paramCounter}`);
+      values.push(user_email);
+      paramCounter++;
+    }
+
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+      updateFields.push(`user_password = $${paramCounter}`);
+      values.push(hashedPassword);
+      paramCounter++;
+    }
+
+    if (user_role) {
+      updateFields.push(`user_role = $${paramCounter}`);
+      values.push(user_role);
+      paramCounter++;
+    }
+
+    if (is_verified !== undefined) {
+      updateFields.push(`is_verified = $${paramCounter}`);
+      values.push(is_verified);
+      paramCounter++;
+    }
+
+    if (account_status) {
+      updateFields.push(`account_status = $${paramCounter}`);
+      values.push(account_status);
+      paramCounter++;
+    }
+
+    // If no fields to update
+    if (updateFields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No fields to update provided",
+      });
+    }
+
+    // Add ID to values array for WHERE clause
+    values.push(id);
+
+    // Construct and execute update query
+    const updateQuery = `
+      UPDATE public."users" 
+      SET ${updateFields.join(", ")}
+      WHERE user_id = $${paramCounter}
+      RETURNING user_id, user_name, user_email, user_role, is_verified, account_status
+    `;
+
+    const result = await con.query(updateQuery, values);
+
+    // Return success response
+    res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating user",
+      error: error.message,
+    });
+  }
+};
+
+// Check this implementation in your UsersController.js
+export const softDeleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user exists
+    const userCheck = await con.query(
+      'SELECT * FROM public."users" WHERE user_id = $1',
+      [id]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Update the status to inactive
+    const query = `
+      UPDATE public."users" 
+      SET account_status = 'inactive'
+      WHERE user_id = $1 
+      RETURNING user_id, user_name, user_email, account_status
+    `;
+
+    const result = await con.query(query, [id]);
+
+    res.status(200).json({
+      success: true,
+      message: "User deactivated successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error deactivating user:", error.stack);
+    res.status(500).json({
+      success: false,
+      message: "Error deactivating user",
+      error: error.message,
+    });
+  }
+};

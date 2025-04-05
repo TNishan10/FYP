@@ -5,7 +5,7 @@ import {
   BarChartOutlined,
   LineChartOutlined,
 } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import {  useNavigate } from "react-router-dom";
 
 // Import all extracted components
 import NutritionSummary, {
