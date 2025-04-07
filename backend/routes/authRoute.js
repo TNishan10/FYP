@@ -319,15 +319,14 @@ router.delete(
 
 // Nutrition Routes
 router.get("/nutrition/foods/search", searchFoods);
-router.get("/nutrition/daily-log/:userId", getDailyFoodLog);
-router.post("/nutrition/daily-log/:userId/add", addFoodToLog);
-router.post("/nutrition/foods/add", addFood);
+router.get("/nutrition/daily-log/:userId", requireSignIn, getDailyFoodLog);
+router.post("/nutrition/daily-log/:userId/add", requireSignIn, addFoodToLog); // Added requireSignIn middleware
+router.post("/nutrition/foods/add", requireSignIn, addFood);
 router.delete(
   "/nutrition/daily-log/:userId/remove/:logId",
-
+  requireSignIn,
   removeFoodFromLog
 );
-
 // Weight Tracking Routes
 router.get("/progress/weight/:userId", getWeightHistory);
 router.post("/progress/weight/:userId/add", addWeightEntry);

@@ -13,15 +13,15 @@ const NutritionSummary = ({
   const [selectedFood, setSelectedFood] = useState(null);
   const [form] = Form.useForm();
 
-  // Function to open modal with default food or empty
+  // Function to handle add food button click
   const handleAddFood = () => {
-    // Call the original onAddFoodClick function if provided by parent
+    // If onAddFoodClick is provided, call it and don't show the modal
     if (onAddFoodClick) {
       onAddFoodClick();
+      return; // Important: Exit early to prevent modal from opening
     }
 
-    // This would normally be handled in the parent component,
-    // but we're adding direct modal access here as an example
+    // Only show modal as fallback if no onAddFoodClick handler was provided
     setSelectedFood({
       // Default food values
       name: "Quick Add",
@@ -176,17 +176,19 @@ const NutritionSummary = ({
         </div>
       </Card>
 
-      {/* Add the Food Modal */}
-      <FoodModal
-        visible={modalVisible}
-        onCancel={() => {
-          setModalVisible(false);
-          form.resetFields();
-        }}
-        onSubmit={handleFoodSubmit}
-        food={selectedFood}
-        form={form}
-      />
+      {/* Only render the FoodModal if onAddFoodClick wasn't provided */}
+      {!onAddFoodClick && (
+        <FoodModal
+          visible={modalVisible}
+          onCancel={() => {
+            setModalVisible(false);
+            form.resetFields();
+          }}
+          onSubmit={handleFoodSubmit}
+          food={selectedFood}
+          form={form}
+        />
+      )}
     </>
   );
 };

@@ -1,36 +1,40 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Tabs, Spin, Form } from "antd";
+import { Form, Tabs, Spin, message } from "antd";
 import {
   FireOutlined,
   BarChartOutlined,
   LineChartOutlined,
 } from "@ant-design/icons";
-import {  useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import dayjs from "dayjs";
 
-// Import all extracted components
+// Import components
+import DateSelector from "../components/ProgressTracking/DateSelector";
 import NutritionSummary, {
   calculateNutritionSummary,
   getDefaultNutritionSummary,
 } from "../components/ProgressTracking/NutritionSummary";
-import WeightHistory from "../components/ProgressTracking/WeightHistory";
-import ExerciseLog from "../components/ProgressTracking/ExerciseLog";
-import FoodModal from "../components/ProgressTracking/FoodModal";
-import FoodSearch from "../components/ProgressTracking/FoodSearch";
+import FoodSearch from "../components/ProgressTracking/foodSearch";
 import DailyFoodLog from "../components/ProgressTracking/DailyFoodLog";
-import DateSelector from "../components/ProgressTracking/DateSelector";
+import FoodModal from "../components/ProgressTracking/FoodModal";
+import ExerciseLog from "../components/ProgressTracking/ExerciseLog";
+import WeightHistory from "../components/ProgressTracking/WeightHistory";
 import AuthRequiredMessage from "../components/ProgressTracking/AuthRequiredMessage";
-import useProgressTrackingData from "../components/ProgressTracking/ProgressTrackingData";
+import { useProgressTrackingData } from "../hooks/useProgressTrackingData";
 
 const ProgressTracking = () => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const searchInputRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // For forcing component refreshes
 
   // Use the extracted custom hook for main data management
   const {
     authError,
     userId,
-    loading,
+    isLoading,
     selectedDate,
     dailyFoods,
     handleDateChange,
@@ -58,18 +62,170 @@ const ProgressTracking = () => {
   const [foodModalVisible, setFoodModalVisible] = useState(false);
   const [selectedFood, setSelectedFood] = useState(null);
 
-  // Add food to daily log
+  // Add food to daily log with proper ID handling
   const addFoodToDailyLog = async (values) => {
     try {
-      // Call FoodModal's add function
+      setLoading(true);
+      // Validate form values
       await form.validateFields();
-      setFoodModalVisible(false);
 
-      // Here we would normally call a function from FoodSearch or DailyFoodLog component
-      // But for now, we'll just refresh the foods
-      await fetchDailyFoods(userId, selectedDate);
+      // Get token with fallback
+      const token =
+        sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (!token) {
+        message.error("You must be logged in to add food");
+        setLoading(false);
+        return;
+      }
+
+      // Close modal and show loading message
+      setFoodModalVisible(false);
+      message.loading("Adding food to your log...", 0.5);
+
+      // Process food_id to ensure it's a numeric value
+      let processedFoodId;
+
+      if (selectedFood.food_id) {
+        const foodIdStr = String(selectedFood.food_id);
+
+        if (foodIdStr.startsWith("usda_")) {
+          // Extract the numeric part after 'usda_'
+          const usdaId = foodIdStr.replace("usda_", "");
+
+          // Add the USDA food to our database first
+          try {
+            const addFoodResponse = await axios.post(
+              `http://localhost:8000/api/v1/auth/nutrition/foods/add`,
+              {
+                name: selectedFood.name,
+                brand: selectedFood.brand || "USDA Database",
+                serving_size: selectedFood.serving_size || "100g",
+                calories: selectedFood.calories || 0,
+                protein: selectedFood.protein || 0,
+                carbs: selectedFood.carbs || 0,
+                fats: selectedFood.fats || 0,
+                fiber: selectedFood.fiber || 0,
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (addFoodResponse.data && addFoodResponse.data.success) {
+              // Use the new food ID
+              processedFoodId = addFoodResponse.data.data.food_id;
+              console.log(
+                "Added USDA food to database with ID:",
+                processedFoodId
+              );
+            } else {
+              throw new Error("Failed to add USDA food to database");
+            }
+          } catch (addError) {
+            console.error("Error adding USDA food:", addError);
+            // If we fail to add the food, try using the numeric ID directly
+            processedFoodId = parseInt(usdaId, 10);
+          }
+        } else {
+          // For regular foods, just parse as integer
+          processedFoodId = parseInt(foodIdStr, 10);
+        }
+
+        // Validate we have a valid numeric ID
+        if (isNaN(processedFoodId)) {
+          message.error("Invalid food ID format. Please try another food.");
+          setLoading(false);
+          return;
+        }
+      } else {
+        message.error("No food ID available. Please select a valid food.");
+        setLoading(false);
+        return;
+      }
+
+      // Send the food log data with the processed numeric food_id
+      const foodData = {
+        food_id: processedFoodId,
+        date: selectedDate.format("YYYY-MM-DD"),
+        meal_type: values.meal_type || "snack",
+        servings: parseFloat(values.servings) || 1,
+      };
+
+      console.log("Sending food payload:", foodData);
+      console.log("Using token:", token.substring(0, 10) + "...");
+
+      const response = await axios.post(
+        `http://localhost:8000/api/v1/auth/nutrition/daily-log/${userId}/add`,
+        foodData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data && response.data.success) {
+        message.success("Food added successfully!");
+        form.resetFields();
+        setSelectedFood(null);
+
+        // More reliable data refresh approach
+        try {
+          // Direct axios call to get the latest data
+          const foodLogResponse = await axios.get(
+            `http://localhost:8000/api/v1/auth/nutrition/daily-log/${userId}`,
+            {
+              params: { date: selectedDate.format("YYYY-MM-DD") },
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+
+          // If we get data back, manually update the state that displays foods
+          if (foodLogResponse.data && foodLogResponse.data.success) {
+            await fetchDailyFoods(userId, selectedDate);
+
+            // Force re-render by updating the refresh key
+            setRefreshKey((prevKey) => prevKey + 1);
+          } else {
+            console.error("Failed to refresh food log data");
+          }
+        } catch (refreshError) {
+          console.error("Error refreshing food data:", refreshError);
+        }
+      } else {
+        throw new Error(response.data?.message || "Failed to add food");
+      }
     } catch (error) {
-      console.error("Error in food submission:", error);
+      console.error("Error adding food:", error);
+
+      // Log the full error response for debugging
+      if (error.response) {
+        console.error("Server response:", error.response.data);
+        console.error("Status code:", error.response.status);
+        console.error("Headers:", error.response.headers);
+      }
+
+      // Show specific error message based on response
+      if (error.response?.status === 401) {
+        message.error("Authentication required. Please log in again.");
+      } else if (error.response?.status === 403) {
+        message.error("You don't have permission to add food");
+      } else if (error.response?.status === 500) {
+        message.error(
+          `Server error: ${error.response.data?.message || "Unknown error"}`
+        );
+      } else {
+        message.error(
+          "Failed to add food to your log: " +
+            (error.message || "Unknown error")
+        );
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,6 +233,36 @@ const ProgressTracking = () => {
   const handleFoodSelect = (food) => {
     setSelectedFood(food);
     setFoodModalVisible(true);
+  };
+
+  // Handle removing food from log
+  const handleRemoveFood = async (logId) => {
+    try {
+      const token =
+        sessionStorage.getItem("token") || localStorage.getItem("token");
+      if (!token) {
+        message.error("You must be logged in to remove food");
+        return;
+      }
+
+      const response = await axios.delete(
+        `http://localhost:8000/api/v1/auth/nutrition/daily-log/${userId}/remove/${logId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (response.data && response.data.success) {
+        message.success("Food removed successfully!");
+        await fetchDailyFoods(userId, selectedDate);
+        setRefreshKey((prevKey) => prevKey + 1); // Force re-render
+      } else {
+        throw new Error(response.data?.message || "Failed to remove food");
+      }
+    } catch (error) {
+      console.error("Error removing food:", error);
+      message.error("Failed to remove food from your log");
+    }
   };
 
   return (
@@ -102,9 +288,10 @@ const ProgressTracking = () => {
                 onDateChange={handleDateChange}
               />
 
-              {loading ? (
-                <div className="flex justify-center items-center h-64">
-                  <Spin size="large" tip="Loading your data..." />
+              {isLoading ? (
+                <div className="flex flex-col justify-center items-center h-64">
+                  <Spin size="large" />
+                  <p className="mt-4 text-gray-600">Loading your data...</p>
                 </div>
               ) : (
                 <Tabs
@@ -122,34 +309,54 @@ const ProgressTracking = () => {
                       ),
                       children: (
                         <div className="p-6">
-                          {/* Nutrition Summary Component - Now with proper nutrition summary object */}
+                          {/* Nutrition Summary Component */}
                           <NutritionSummary
                             nutritionSummary={nutritionSummary}
                             selectedDate={selectedDate}
                             onAddFoodClick={() => {
-                              setSearchQuery("");
-                              document
-                                .getElementById("add-food-section")
-                                ?.scrollIntoView({ behavior: "smooth" });
-                              if (searchInputRef.current)
-                                searchInputRef.current.focus();
+                              setSearchQuery && setSearchQuery(""); // Clear search query if it exists
+
+                              // Scroll to the search section with offset
+                              const searchSection =
+                                document.getElementById("add-food-section");
+                              if (searchSection) {
+                                // Scroll with offset to account for fixed headers if any
+                                const offset = 100;
+                                const topPos =
+                                  searchSection.getBoundingClientRect().top +
+                                  window.pageYOffset -
+                                  offset;
+
+                                window.scrollTo({
+                                  top: topPos,
+                                  behavior: "smooth",
+                                });
+                              }
+
+                              // Focus with slight delay to allow scroll to complete
+                              setTimeout(() => {
+                                if (searchInputRef.current) {
+                                  searchInputRef.current.focus();
+                                }
+                              }, 500);
                             }}
                           />
 
                           {/* Food Search Component */}
-                          <FoodSearch
-                            token={sessionStorage.getItem("token")}
-                            onFoodSelect={handleFoodSelect}
-                          />
+                          <div id="add-food-section">
+                            <FoodSearch
+                              ref={searchInputRef}
+                              token={sessionStorage.getItem("token")}
+                              onFoodSelect={handleFoodSelect}
+                            />
+                          </div>
 
                           {/* Daily Food Log Component */}
                           <DailyFoodLog
+                            key={refreshKey} // Add this to force re-render
                             dailyFoods={dailyFoods || []}
                             selectedDate={selectedDate}
-                            onRemoveFood={(logId) => {
-                              // Implement removal logic or pass down to component
-                              fetchDailyFoods(userId, selectedDate);
-                            }}
+                            onRemoveFood={handleRemoveFood}
                           />
 
                           {/* Food Modal */}
@@ -159,6 +366,7 @@ const ProgressTracking = () => {
                             onSubmit={addFoodToDailyLog}
                             food={selectedFood}
                             form={form}
+                            loading={loading}
                           />
                         </div>
                       ),

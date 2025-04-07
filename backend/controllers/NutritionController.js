@@ -82,18 +82,45 @@ export const getDailyFoodLog = async (req, res) => {
     });
   }
 };
-// Add food to user's daily log
+
 export const addFoodToLog = async (req, res) => {
   try {
     const userId = req.params.userId;
     const { food_id, date, meal_type, servings } = req.body;
 
-    // Debug logging
-    console.log("Auth check for adding food:", {
-      tokenUserId: req.user.id,
-      requestUserId: userId,
-      isAdmin: req.user.isAdmin,
-    });
+    // Add detailed debugging
+    console.log("=== Food Log Request ===");
+    console.log("User ID:", userId);
+    console.log("Food Data:", { food_id, date, meal_type, servings });
+    console.log(
+      "Auth user:",
+      req.user
+        ? `ID: ${req.user.id}, Admin: ${req.user.isAdmin}`
+        : "Not authenticated"
+    );
+
+    // Check if req.user exists
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // Validate required fields
+    if (!food_id) {
+      return res.status(400).json({
+        success: false,
+        message: "food_id is required",
+      });
+    }
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: "date is required",
+      });
+    }
 
     // ALREADY UPDATED: Use string comparison for UUID format
     if (String(req.user.id) !== String(userId) && !req.user.isAdmin) {
@@ -103,26 +130,37 @@ export const addFoodToLog = async (req, res) => {
       });
     }
 
-    // Insert food log
-    const result = await con.query(
-      `INSERT INTO food_logs (user_id, food_id, date, meal_type, servings)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING log_id`,
-      [userId, food_id, date, meal_type, servings]
-    );
+    // Insert food log with better error handling
+    try {
+      const result = await con.query(
+        `INSERT INTO food_logs (user_id, food_id, date, meal_type, servings)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING log_id`,
+        [userId, food_id, date, meal_type || "snack", servings || 1]
+      );
 
-    res.status(201).json({
-      success: true,
-      data: {
-        log_id: result.rows[0].log_id,
-      },
-    });
+      res.status(201).json({
+        success: true,
+        data: {
+          log_id: result.rows[0].log_id,
+        },
+      });
+    } catch (dbError) {
+      console.error("Database error:", dbError);
+      return res.status(500).json({
+        success: false,
+        message: "Database error when adding food to log",
+        error: dbError.message,
+        detail: dbError.detail || "No additional details",
+      });
+    }
   } catch (error) {
     console.error("Error adding food to log:", error);
     res.status(500).json({
       success: false,
       message: "Error adding food to log",
       error: error.message,
+      stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
     });
   }
 };

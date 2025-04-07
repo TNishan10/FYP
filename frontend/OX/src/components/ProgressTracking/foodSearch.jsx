@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, forwardRef } from "react";
 import { Input, Button, Table, notification } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import axios from "axios";
@@ -7,12 +7,13 @@ const USDA_API_KEY = "bkudmLX3uLB3qNJnWoLSjskE8kjKf8vmmTbgbJXb";
 const USDA_API_URL = "https://api.nal.usda.gov/fdc/v1/foods/search";
 const API_URL = "http://localhost:8000/api/v1/auth";
 
-const FoodSearch = ({ token, onFoodSelect }) => {
+// This is the correct forwardRef implementation
+const FoodSearch = forwardRef((props, ref) => {
+  const { token, onFoodSelect } = props;
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [useFoodDatabase, setUseFoodDatabase] = useState("usda");
-  const searchInputRef = useRef(null);
 
   // Search for foods
   const searchFoods = async () => {
@@ -107,13 +108,6 @@ const FoodSearch = ({ token, onFoodSelect }) => {
     }
   };
 
-  // Focus the search input
-  const focusSearch = () => {
-    if (searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  };
-
   return (
     <div id="add-food-section">
       <div className="flex gap-2 mb-6">
@@ -124,7 +118,7 @@ const FoodSearch = ({ token, onFoodSelect }) => {
           onPressEnter={searchFoods}
           size="large"
           prefix={<SearchOutlined />}
-          ref={searchInputRef}
+          ref={ref} // Use the forwarded ref here
         />
         <Button
           type="primary"
@@ -183,6 +177,6 @@ const FoodSearch = ({ token, onFoodSelect }) => {
       )}
     </div>
   );
-};
+});
 
 export default FoodSearch;
