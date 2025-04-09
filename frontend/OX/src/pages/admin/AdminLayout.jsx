@@ -79,7 +79,7 @@ const AdminLayout = () => {
       key: "2",
       icon: <HeartOutlined style={{ fontSize: "18px" }} />,
       label: "Workout Plans",
-      onClick: () => navigate("/admin/workout-plans"),
+      onClick: () => navigate("/admin/training-programs"),
     },
     {
       key: "3",

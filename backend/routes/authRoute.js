@@ -99,6 +99,17 @@ import {
   removeExerciseLog,
 } from "../controllers/ExerciseController.js";
 
+import {
+  getAllTrainingPrograms,
+  getTrainingProgramById,
+  recordProgramDownload,
+  createTrainingProgram,
+  updateTrainingProgram,
+  deleteTrainingProgram,
+  getFeaturedTrainingProgram,
+  getUserDownloads,
+} from "../controllers/TrainingProgramController.js";
+
 import crypto from "crypto";
 import con from "../server.js";
 
@@ -338,5 +349,38 @@ router.get("/exercises/muscle-groups", getMuscleGroups);
 router.get("/exercises/user/:userId", getUserExerciseLogs);
 router.post("/exercises/log/:userId", logExercise);
 router.delete("/exercises/log/:userId/remove/:logId", removeExerciseLog);
+
+// Public training program routes
+router.get("/training-programs", getAllTrainingPrograms);
+router.get("/training-programs/featured", getFeaturedTrainingProgram);
+router.get("/training-programs/:id", getTrainingProgramById);
+
+// Protected training program routes (require signin)
+router.post(
+  "/training-programs/:id/download",
+  requireSignIn,
+  recordProgramDownload
+);
+router.get("/user/downloads", requireSignIn, getUserDownloads);
+
+// Admin training program routes
+router.post(
+  "/training-programs",
+  requireSignIn,
+  isAdmin,
+  createTrainingProgram
+);
+router.put(
+  "/training-programs/:id",
+  requireSignIn,
+  isAdmin,
+  updateTrainingProgram
+);
+router.delete(
+  "/training-programs/:id",
+  requireSignIn,
+  isAdmin,
+  deleteTrainingProgram
+);
 
 export default router;

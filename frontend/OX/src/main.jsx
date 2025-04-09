@@ -25,12 +25,13 @@ import Dashboard from "./pages/Dashboard.jsx";
 import ProgressTracking from "./pages/ProgressTracking.jsx";
 import AdminDashboard from "./pages/admin/index.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
-import WorkoutPlansAdmin from "./pages/admin/WorkoutPlansAdmin.jsx";
 import NutritionPlansAdmin from "./pages/admin/NutritionPlansAdmin.jsx";
 import SupplementsAdmin from "./pages/admin/SupplementsAdmin.jsx";
 import UsersAdmin from "./pages/admin/UsersAdmin.jsx";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
 import Hero from "./components/Hero/Hero.jsx";
+import TrainingProgram from "./pages/TrainingProgram.jsx";
+import TrainingProgramsAdmin from "./pages/admin/TrainingProgramsAdmin.jsx";
 
 import {
   ProtectedRoute,
@@ -79,6 +80,17 @@ const router = createBrowserRouter(
             </UserRoute>
           }
         />
+        <Route
+          path="programs"
+          element={
+            <UserRoute>
+              <ProtectedRoute>
+                <TrainingProgram />
+              </ProtectedRoute>
+            </UserRoute>
+          }
+        />
+
         <Route
           path="progress-tracking"
           element={
@@ -162,10 +174,11 @@ const router = createBrowserRouter(
         }
       >
         <Route index element={<AdminDashboard />} />
-        <Route path="workout-plans" element={<WorkoutPlansAdmin />} />
+        <Route path="workout-plans" element={<TrainingProgramsAdmin />} />
         <Route path="nutrition-plans" element={<NutritionPlansAdmin />} />
         <Route path="supplements" element={<SupplementsAdmin />} />
         <Route path="users" element={<UsersAdmin />} />
+        <Route path="training-programs" element={<TrainingProgramsAdmin />} />
       </Route>
     </>
   )

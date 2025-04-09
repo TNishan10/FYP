@@ -1,3 +1,4 @@
+import fs from 'fs';
 import express from "express";
 import colors from "colors";
 import dotenv from "dotenv";
@@ -6,9 +7,21 @@ import pkg from "pg";
 import authRoutes from "./routes/authRoute.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import fileUpload from "express-fileupload";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Configure env
 dotenv.config();
+
+// Setup __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const uploadsDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  console.log(`Creating uploads directory at ${uploadsDir}`);
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Database
 const { Client } = pkg;
@@ -33,32 +46,33 @@ con
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(morgan("dev"));
+app.use(cookieParser());
 
-// CORS configuration - Fixed for credentials
+// CORS configuration
 app.use(
   cors({
-    origin: "http://localhost:5173", //  frontend URL
+    origin: "http://localhost:5173", // frontend URL
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// If you don't have express-fileupload already, add this too
-import fileUpload from "express-fileupload";
+// File upload middleware with enhanced configuration
 app.use(
   fileUpload({
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    createParentPath: true,
+    useTempFiles: true,
+    tempFileDir: path.join(__dirname, "tmp"), // Use a local temp directory
+    debug: true, // Enable debugging
   })
 );
-
-// Make sure your body parser limit is increased
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
-
-app.use(cookieParser());
+// Serve static files from the uploads directory
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
 app.use("/api/v1/auth", authRoutes);
