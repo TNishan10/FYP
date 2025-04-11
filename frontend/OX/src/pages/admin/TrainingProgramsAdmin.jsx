@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { uploadToCloudinary } from "../../services/cloudinaryService";
+import { uploadToCloudinary as cloudinaryUpload } from "../../services/cloudinaryService";
+const CLOUD_NAME = "dywgqhmpo";
+const UPLOAD_PRESET = "OX-Fit";
 import {
   Typography,
   Table,
@@ -22,6 +24,38 @@ import { API_URL } from "../../config";
 const { Title } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
+const uploadToCloudinary = async (file) => {
+  try {
+    console.log("Starting Cloudinary upload for file:", file.name);
+
+    // Create a FormData instance
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET);
+    formData.append("folder", "training-programs");
+
+    // Direct upload to Cloudinary
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Upload failed with status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Cloudinary upload successful:", data);
+
+    // Return just the secure URL
+    return data.secure_url;
+  } catch (error) {
+    console.error("Error in Cloudinary upload:", error);
+    throw error;
+  }
+};
 
 const TrainingProgramsAdmin = () => {
   const [programs, setPrograms] = useState([]);
@@ -556,7 +590,8 @@ const TrainingProgramsAdmin = () => {
             onError={(e) => {
               console.error("Image failed to load:", imageSource);
               e.target.onerror = null;
-              e.target.src = "https://via.placeholder.com/50x50?text=Error";
+              e.target.src =
+                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-size='8' text-anchor='middle' dy='.3em' fill='%23999'%3ENo Image%3C/text%3E%3C/svg%3E";
             }}
           />
         );
@@ -849,7 +884,7 @@ const TrainingProgramsAdmin = () => {
                   console.error("Preview image failed to load:", imageUrl);
                   e.target.onerror = null;
                   e.target.src =
-                    "https://via.placeholder.com/400x200?text=Image+Error";
+                    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200' viewBox='0 0 400 200'%3E%3Crect width='400' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-size='16' text-anchor='middle' dy='.3em' fill='%23999'%3EImage Not Found%3C/text%3E%3C/svg%3E";
                 }}
               />
             </div>

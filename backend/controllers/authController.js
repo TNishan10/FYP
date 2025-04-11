@@ -237,9 +237,6 @@ export const loginController = async (req, res) => {
       [email]
     );
 
-    const updateLastLogin = `UPDATE public."users" SET last_login_at = NOW() WHERE user_id = $1`;
-    await con.query(updateLastLogin, [user.user_id]);
-
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -259,17 +256,22 @@ export const loginController = async (req, res) => {
       });
     }
 
+    // Update last login timestamp AFTER user is found and validated
+    const updateLastLogin = `UPDATE public."users" SET last_login_at = NOW() WHERE user_id = $1`;
+    await con.query(updateLastLogin, [user.user_id]);
+
     // Create and return token WITH verification status
     const token = JWT.sign(
       {
-        id: user.user_id, // UUID string format
+        id: user.user_id,
         email: user.user_email,
         name: user.user_name,
-        isAdmin: user.user_role === "admin", // Add admin check
+        isAdmin: user.user_role === "admin",
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
+
     res.status(200).json({
       success: true,
       message: "Login successful",
@@ -278,7 +280,7 @@ export const loginController = async (req, res) => {
           id: user.user_id,
           name: user.user_name,
           email: user.user_email,
-          isVerified: user.is_verified || false, // Handle the case where column might be null
+          isVerified: user.is_verified || false,
         },
         token,
       },
