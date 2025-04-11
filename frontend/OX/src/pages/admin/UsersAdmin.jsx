@@ -23,10 +23,10 @@ const UsersAdmin = () => {
   });
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(pagination.current, pagination.pageSize);
+  }, [pagination.current, pagination.pageSize]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = 1, pageSize = 10) => {
     setLoading(true);
     try {
       const token = sessionStorage.getItem("token");
@@ -35,8 +35,9 @@ const UsersAdmin = () => {
         return;
       }
 
+      // Updated to include pagination parameters in the API request
       const response = await axios.get(
-        "http://localhost:8000/api/v1/auth/users",
+        `http://localhost:8000/api/v1/auth/users?page=${page}&limit=${pageSize}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -46,8 +47,9 @@ const UsersAdmin = () => {
         setUsers(response.data.data);
         setPagination((prev) => ({
           ...prev,
-          total:
-            response.data.pagination?.total_count || response.data.data.length,
+          current: page,
+          pageSize: pageSize,
+          total: response.data.pagination?.totalItems || 0,
         }));
       } else {
         setError("No users found.");
@@ -73,13 +75,11 @@ const UsersAdmin = () => {
         })
       );
 
-      return updatedUsers;
+      return updatedUsers.slice(0, pagination.pageSize); // Ensure we don't exceed page size
     });
 
-    setPagination((prev) => ({
-      ...prev,
-      total: prev.total + 1,
-    }));
+    // Instead of just incrementing, refetch to get accurate pagination
+    fetchUsers(1, pagination.pageSize);
 
     message.success("User added successfully!");
   };
@@ -122,12 +122,27 @@ const UsersAdmin = () => {
       return updatedUsers;
     });
 
-    setPagination((prev) => ({
-      ...prev,
-      total: prev.total - 1,
-    }));
+    // If we deleted the last user on this page, go back a page
+    if (users.length === 1 && pagination.current > 1) {
+      setPagination((prev) => ({
+        ...prev,
+        current: prev.current - 1,
+      }));
+    } else {
+      // Otherwise just refetch to ensure data consistency
+      fetchUsers(pagination.current, pagination.pageSize);
+    }
 
     message.success("User deleted successfully!");
+  };
+
+  // Handle table pagination change
+  const handleTableChange = (paginationParams) => {
+    setPagination({
+      current: paginationParams.current,
+      pageSize: paginationParams.pageSize,
+      total: pagination.total,
+    });
   };
 
   const columns = [
@@ -221,8 +236,8 @@ const UsersAdmin = () => {
 
       <div style={{ marginBottom: 16 }}>
         <Text type="secondary">
-          Showing {pagination.pageSize} users per page. Use the pagination
-          controls below to view more users.
+          Showing page {pagination.current} of users. Total: {pagination.total}{" "}
+          users.
         </Text>
       </div>
 
@@ -231,12 +246,14 @@ const UsersAdmin = () => {
         columns={columns}
         rowKey="user_id"
         pagination={{
-          ...pagination,
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
           showSizeChanger: true,
           showTotal: (total) => `Total ${total} users`,
         }}
-        onChange={(pagination) => setPagination(pagination)}
-        loading={loading && users.length === 0}
+        onChange={handleTableChange}
+        loading={loading}
       />
 
       <AddUser

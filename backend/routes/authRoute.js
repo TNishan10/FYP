@@ -6,6 +6,7 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  cleanupInactiveUsers,
   getUserByEmail,
   verifyUser,
   createUserByAdmin,
@@ -123,6 +124,8 @@ router.get("/users/email/:email", getUserByEmail);
 router.post("/users", createUser);
 router.put("/users/:id", updateUser);
 router.delete("/users/:id", deleteUser);
+router.post("/users/cleanup-inactive", isAdmin, cleanupInactiveUsers);
+router.post("/users/cleanup-test", cleanupInactiveUsers);
 router.post("/verify", verifyUser);
 router.post("/users/admin/create", createUserByAdmin);
 router.put("/users/:id", updateUserByAdmin);

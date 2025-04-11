@@ -33,6 +33,7 @@ export const getAllUsers = async (req, res) => {
       pagination: {
         currentPage: page,
         totalPages,
+        total_count: totalUsers,
         totalItems: totalUsers,
         itemsPerPage: limit,
       },
@@ -280,6 +281,9 @@ export const updateUser = async (req, res) => {
 };
 
 // Delete user
+// ...existing code...
+
+// Replace the softDeleteUser function with this
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -297,27 +301,70 @@ export const deleteUser = async (req, res) => {
       });
     }
 
-    // Delete user
+    // Permanently delete user
     const query = `
       DELETE FROM public."users" 
       WHERE user_id = $1 
-      RETURNING user_id, user_name, user_email
+      RETURNING user_id
     `;
 
     const result = await con.query(query, [id]);
 
     res.status(200).json({
       success: true,
-      message: "User deleted successfully",
-      data: result.rows[0],
+      message: "User permanently deleted",
+      data: { user_id: result.rows[0].user_id },
     });
   } catch (error) {
-    console.error("Error executing query", error.stack);
+    console.error("Error deleting user:", error.stack);
     res.status(500).json({
       success: false,
       message: "Error deleting user",
       error: error.message,
     });
+  }
+};
+
+// New function to automatically clean up inactive users
+export const cleanupInactiveUsers = async (req, res) => {
+  try {
+    // Delete users inactive for 30+ days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const query = `
+      DELETE FROM public."users"
+      WHERE (last_login_at < $1 OR last_login_at IS NULL)
+      AND account_status = 'inactive'
+      RETURNING user_id
+    `;
+
+    const result = await con.query(query, [thirtyDaysAgo]);
+    const deletedCount = result.rows.length;
+
+    // If this is an API endpoint
+    if (res) {
+      res.status(200).json({
+        success: true,
+        message: `${deletedCount} inactive users have been permanently deleted`,
+        data: { deleted_count: deletedCount },
+      });
+    }
+
+    return deletedCount;
+  } catch (error) {
+    console.error("Error cleaning up inactive users:", error.stack);
+
+    // If this is an API endpoint
+    if (res) {
+      res.status(500).json({
+        success: false,
+        message: "Error cleaning up inactive users",
+        error: error.message,
+      });
+    }
+
+    throw error;
   }
 };
 

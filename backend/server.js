@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from "fs";
 import express from "express";
 import colors from "colors";
 import dotenv from "dotenv";
@@ -10,7 +10,7 @@ import cors from "cors";
 import fileUpload from "express-fileupload";
 import path from "path";
 import { fileURLToPath } from "url";
-
+import { scheduleUserCleanup } from "./utility/scheduledTask.js";
 // Configure env
 dotenv.config();
 
@@ -87,6 +87,9 @@ app.get("/", (req, res) => {
 
 // Port
 const port = process.env.PORT || 8000;
+
+// Schedule user cleanup task
+scheduleUserCleanup();
 
 // Run listen
 app.listen(port, () => {

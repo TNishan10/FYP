@@ -9,6 +9,8 @@ const DeleteUser = ({ visible, onCancel, onSuccess, user }) => {
   const [error, setError] = useState(null);
 
   const handleDelete = async () => {
+    if (!user) return;
+
     setLoading(true);
     setError(null);
 
@@ -19,55 +21,25 @@ const DeleteUser = ({ visible, onCancel, onSuccess, user }) => {
         return;
       }
 
-      // First try directly deactivating instead of hard delete
-      try {
-        const deactivateUrl = `http://localhost:8000/api/v1/auth/users/${user?.user_id}/deactivate`;
-        console.log("Attempting to deactivate user:", deactivateUrl);
-
-        const response = await axios.put(
-          deactivateUrl,
-          {},
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        if (response.data && response.data.success) {
-          message.success("User was successfully deactivated");
-          if (onSuccess) onSuccess(user.user_id);
-          onCancel();
-          return;
+      const response = await axios.delete(
+        `http://localhost:8000/api/v1/auth/users/${user.user_id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
         }
-      } catch (deactivateError) {
-        console.error("Deactivation failed:", deactivateError);
+      );
 
-        // Fall back to trying hard delete
-        try {
-          const response = await axios.delete(
-            `http://localhost:8000/api/v1/auth/users/${user?.user_id}`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-
-          if (response.data && response.data.success) {
-            message.success("User deleted successfully!");
-            if (onSuccess) onSuccess(user.user_id);
-            onCancel();
-            return;
-          }
-        } catch (deleteError) {
-          console.error("Hard delete also failed:", deleteError);
-          throw deactivateError; // Use the original error
-        }
+      if (response.data.success) {
+        message.success("User permanently deleted!");
+        if (onSuccess) onSuccess(user.user_id);
+        onCancel();
+      } else {
+        throw new Error("Failed to delete user");
       }
-
-      throw new Error("Both deactivation and deletion failed");
     } catch (error) {
-      console.error("Error processing user:", error);
+      console.error("Error deleting user:", error);
 
       // Set a more specific error message based on the response
-      let errorMessage = "An error occurred while processing the user";
+      let errorMessage = "An error occurred while deleting the user";
 
       if (error.response) {
         if (error.response.status === 404) {
@@ -75,7 +47,7 @@ const DeleteUser = ({ visible, onCancel, onSuccess, user }) => {
             "User not found. The user may have been already deleted.";
         } else if (error.response.status === 500) {
           errorMessage =
-            "Server error: Unable to process this user. Please contact the administrator.";
+            "Server error: Unable to delete this user. Please contact the administrator.";
         } else if (error.response.data?.message) {
           errorMessage = error.response.data.message;
         }
@@ -97,8 +69,8 @@ const DeleteUser = ({ visible, onCancel, onSuccess, user }) => {
     >
       <div style={{ marginBottom: 24 }}>
         <Text>
-          Are you sure you want to delete the user "
-          <strong>{user?.user_name}</strong>" ({user?.user_email})?
+          Are you sure you want to permanently delete user{" "}
+          <strong>{user?.user_name}</strong> ({user?.user_email})?
           {!error && " This action cannot be undone."}
         </Text>
       </div>
@@ -134,7 +106,7 @@ const DeleteUser = ({ visible, onCancel, onSuccess, user }) => {
               loading={loading}
               onClick={handleDelete}
             >
-              Delete User
+              Delete Permanently
             </Button>
           )}
         </Space>

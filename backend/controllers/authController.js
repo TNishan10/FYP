@@ -237,6 +237,9 @@ export const loginController = async (req, res) => {
       [email]
     );
 
+    const updateLastLogin = `UPDATE public."users" SET last_login_at = NOW() WHERE user_id = $1`;
+    await con.query(updateLastLogin, [user.user_id]);
+
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
