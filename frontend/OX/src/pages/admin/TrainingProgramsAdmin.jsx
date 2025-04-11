@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { uploadToCloudinary } from "../../services/cloudinaryService";
 import {
   Typography,
   Table,
@@ -82,16 +83,38 @@ const TrainingProgramsAdmin = () => {
   }, []);
 
   // Reset image state when modal changes
+  // Fix the useEffect that handles modal changes:
   useEffect(() => {
     if (!modalVisible) {
       setImageUrl("");
       setFileList([]);
     } else if (modalType === "edit" && selectedProgram?.image_url) {
+      // For edit mode, use the processed URL from the table data
+      console.log(
+        "Setting image URL for edit mode:",
+        selectedProgram.image_url
+      );
       setImageUrl(selectedProgram.image_url);
+
+      // If it's a full URL (likely from Cloudinary), add to fileList as a file object
+      if (selectedProgram.image_url.startsWith("http")) {
+        // Just create an empty fileList without actual file data
+        // This prevents the upload field from showing "Upload" when there's already an image
+        setFileList([
+          {
+            uid: "-1",
+            name: "existing-image.jpg",
+            status: "done",
+            url: selectedProgram.image_url,
+          },
+        ]);
+      }
     }
   }, [modalVisible, modalType, selectedProgram]);
 
   // Fetch programs from API
+  // Update your fetchPrograms function to better handle Cloudinary URLs
+
   const fetchPrograms = async () => {
     setLoading(true);
     try {
@@ -111,22 +134,32 @@ const TrainingProgramsAdmin = () => {
       if (response.data && response.data.success) {
         // Process each program to ensure image_urls are properly formatted
         const processedPrograms = (response.data.data || []).map((program) => {
-          // Process image URL to ensure it's a full URL
+          // For Cloudinary URLs, don't process them further
+          if (program.image_url?.includes("cloudinary.com")) {
+            console.log(
+              `Program ${program.program_id} has Cloudinary URL:`,
+              program.image_url
+            );
+            return {
+              ...program,
+              original_image_url: program.image_url,
+              // No processing needed for Cloudinary URLs
+            };
+          }
+
+          // For other URLs, process them
           const fullImageUrl =
             program.image_url && program.image_url !== "undefined"
               ? getFullImageUrl(program.image_url)
               : null;
 
-          console.log(
-            `Program ${program.program_id} original image URL: ${program.image_url}`
-          );
-          console.log(
-            `Program ${program.program_id} processed image URL: ${fullImageUrl}`
-          );
+          console.log(`Program ${program.program_id} image URL processing:`, {
+            original: program.image_url,
+            processed: fullImageUrl,
+          });
 
           return {
             ...program,
-            // Store both original and processed URLs
             original_image_url: program.image_url,
             image_url: fullImageUrl,
           };
@@ -145,6 +178,8 @@ const TrainingProgramsAdmin = () => {
   };
 
   // Handle form submission
+  // Replace your current handleSubmit function with this improved version
+
   const handleSubmit = async (values) => {
     try {
       setLoading(true);
@@ -155,13 +190,12 @@ const TrainingProgramsAdmin = () => {
         return;
       }
 
-      // Create FormData object for file upload
+      // Create FormData for backend submission
       const formData = new FormData();
 
-      // Append all form values to FormData
+      // Append all form values except image fields
       Object.keys(values).forEach((key) => {
-        // Skip image_url if we have a file
-        if (key !== "image_url" || !fileList.length) {
+        if (key !== "image_url_input" && key !== "image_upload") {
           formData.append(key, values[key]);
         }
       });
@@ -175,70 +209,73 @@ const TrainingProgramsAdmin = () => {
         });
       }
 
-      // Handle image - check if we have an actual file to upload
+      // Handle image - first try uploaded file, then fall back to direct URL input
+      let finalImageUrl = null;
+
+      // Update this section in the handleSubmit function around line 250
+      // Handle image - first try uploaded file, then fall back to direct URL input
+
+      // Option 1: New file upload to Cloudinary
       if (fileList.length > 0 && fileList[0].originFileObj) {
-        const fileObj = fileList[0].originFileObj;
-        console.log("Uploading file:", fileObj.name, "Type:", fileObj.type);
-        console.log("File object:", fileObj);
-
-        // Handle image - check if we have an actual file to upload
-        if (fileList.length > 0 && fileList[0].originFileObj) {
+        try {
+          setUploadLoading(true);
           const fileObj = fileList[0].originFileObj;
-          console.log("Uploading file:", fileObj.name, "Type:", fileObj.type);
-          console.log("File object:", fileObj); // Add this line to inspect the file object
+          console.log("Uploading new file to Cloudinary:", fileObj.name);
 
-          try {
-            // Append with correct field name expected by backend
-            formData.append("image", fileObj); // Use the original file object directly
-
-            console.log("FormData after appending file:");
-            for (let [key, value] of formData.entries()) {
-              if (value instanceof File) {
-                console.log(
-                  `${key}: File (${value.name}, ${value.type}, ${value.size} bytes)`
-                );
-              } else {
-                console.log(`${key}: ${value}`);
-              }
-            }
-          } catch (fileError) {
-            console.error("Error appending file to FormData:", fileError);
-          }
-        }
-
-        // Create a new File object to ensure it's properly formatted
-        const file = new File([fileObj], fileObj.name, {
-          type: fileObj.type,
-        });
-
-        // Append with correct field name expected by backend
-        formData.append("image", file);
-
-        // Log FormData entries for debugging
-        for (let [key, value] of formData.entries()) {
-          console.log(
-            `${key}: ${value instanceof File ? "File: " + value.name : value}`
-          );
+          finalImageUrl = await uploadToCloudinary(fileObj);
+          console.log("Successfully uploaded to Cloudinary:", finalImageUrl);
+        } catch (cloudinaryError) {
+          console.error("Error uploading to Cloudinary:", cloudinaryError);
+          message.error("Failed to upload image to cloud storage");
+          setLoading(false);
+          setUploadLoading(false);
+          return;
+        } finally {
+          setUploadLoading(false);
         }
       }
-      // Only use image_url if no file is selected
-      else if (values.image_url) {
-        formData.append("image_url", values.image_url);
+      // Option 2: Using existing image URL (in edit mode) - FIXED: removed cloudinary restriction
+      else if (modalType === "edit" && imageUrl) {
+        console.log("Using existing image URL in edit mode:", imageUrl);
+        finalImageUrl = imageUrl;
+      }
+      // Option 3: Direct URL input
+      else if (values.image_url_input) {
+        console.log(
+          "Using manually entered image URL:",
+          values.image_url_input
+        );
+        finalImageUrl = values.image_url_input;
+      }
+      // Option 4: Handle edit mode with no changes to image (fallback)
+      else if (modalType === "edit" && selectedProgram?.image_url) {
+        console.log(
+          "Using original program image URL:",
+          selectedProgram.image_url
+        );
+        finalImageUrl = selectedProgram.image_url;
       }
 
-      console.log("Submitting form data with image");
-
-      console.log("Form data contents:");
-      for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(
-            `${key}: File (${value.name}, ${value.type}, ${value.size} bytes)`
-          );
-        } else {
-          console.log(`${key}: ${value}`);
+      // Add the final image URL to the form data
+      if (finalImageUrl) {
+        console.log("Final image URL being sent to server:", finalImageUrl);
+        formData.append("image_url", finalImageUrl);
+      } else {
+        console.warn("No image URL found to submit");
+        if (modalType === "add") {
+          message.error("Please provide an image for the program");
+          setLoading(false);
+          return;
         }
       }
 
+      // Log all form data being sent
+      console.log("Form data being submitted:");
+      for (let pair of formData.entries()) {
+        console.log(pair[0] + ": " + pair[1]);
+      }
+
+      // Submit to your backend API
       let response;
       if (modalType === "add") {
         response = await axios.post(
@@ -247,71 +284,31 @@ const TrainingProgramsAdmin = () => {
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data", // Important for file uploads!
+              "Content-Type": "multipart/form-data",
             },
           }
         );
-
-        console.log("Request configuration:", {
-          url: response.config.url,
-          method: response.config.method,
-          headers: response.config.headers,
-          data: response.config.data ? "FormData object" : "No data",
-        });
-        console.log("Response status:", response.status);
-        console.log("Response data:", response.data);
-
-        // Debug the server response
-        // Add this inside handleSubmit, right after the API response
-        if (response.data && response.data.success) {
-          console.log("Response from server:", response.data);
-          console.log("Image URL in response:", response.data.data?.image_url);
-
-          // Log how getFullImageUrl would process this URL:
-          if (response.data.data?.image_url) {
-            console.log(
-              "Processed image URL:",
-              getFullImageUrl(response.data.data.image_url)
-            );
-          }
-        }
-
+        console.log("Create response:", response.data);
         message.success("Training program created successfully");
-      } else {
+      } else if (modalType === "edit") {
         response = await axios.put(
           `http://localhost:8000/api/v1/auth/training-programs/${selectedProgram.program_id}`,
           formData,
           {
             headers: {
               Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data", // Important for file uploads!
+              "Content-Type": "multipart/form-data",
             },
           }
         );
-        console.log("Request configuration:", {
-          url: response.config.url,
-          method: response.config.method,
-          headers: response.config.headers,
-          data: response.config.data ? "FormData object" : "No data",
-        });
-        console.log("Response status:", response.status);
-        console.log("Response data:", response.data);
-
-        // Debug the server response
-        if (response.data && response.data.success) {
-          console.log("Server response:", response.data);
-          if (response.data.data && response.data.data.image_url) {
-            console.log("Image URL in response:", response.data.data.image_url);
-          }
-        }
-
+        console.log("Update response:", response.data);
         message.success("Training program updated successfully");
       }
 
       // Reset and refresh
       setModalVisible(false);
       form.resetFields();
-      fetchPrograms();
+      await fetchPrograms(); // Added await here to ensure it completes
     } catch (error) {
       console.error("Error submitting form:", error);
       message.error("Failed to save training program");
@@ -481,7 +478,7 @@ const TrainingProgramsAdmin = () => {
       difficulty: program.difficulty,
       duration: program.duration,
       frequency: program.frequency,
-      image_url: program.image_url,
+      image_url_input: program.image_url,
       file_url: program.file_url,
       featured: program.featured,
       highlights: program.highlights || [""],
@@ -506,32 +503,50 @@ const TrainingProgramsAdmin = () => {
   };
 
   // Table columns
+  // Replace your existing image column definition with this improved version
   const columns = [
-    {
-      title: "Title",
-      dataIndex: "title",
-      key: "title",
-      sorter: (a, b) => a.title.localeCompare(b.title),
-    },
-    // In your columns definition:
     {
       title: "Image",
       dataIndex: "image_url",
       key: "image_url",
       render: (url, record) => {
-        // First check the processed URL from our enhanced processing
-        const imageSource = url && url !== "undefined" ? url : null;
+        // Determine the best image URL to use
+        const imageSource =
+          url ||
+          (record.original_image_url &&
+          record.original_image_url !== "undefined"
+            ? getFullImageUrl(record.original_image_url)
+            : null);
 
         console.log(`Rendering image for program ${record.program_id}:`, {
           processedUrl: url,
           originalUrl: record.original_image_url,
-          imageSource: imageSource,
+          finalImageSource: imageSource,
+          isCloudinaryUrl: imageSource?.includes("cloudinary.com"),
         });
 
-        return imageSource ? (
+        if (!imageSource) {
+          return (
+            <div
+              style={{
+                width: 50,
+                height: 50,
+                background: "#f0f0f0",
+                borderRadius: "4px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              No image
+            </div>
+          );
+        }
+
+        return (
           <img
             src={imageSource}
-            alt="Preview"
+            alt={record.title || "Program image"}
             style={{
               width: 50,
               height: 50,
@@ -541,24 +556,9 @@ const TrainingProgramsAdmin = () => {
             onError={(e) => {
               console.error("Image failed to load:", imageSource);
               e.target.onerror = null;
-              e.target.style.display = "none";
-              e.target.parentElement.innerHTML = "Image Error";
+              e.target.src = "https://via.placeholder.com/50x50?text=Error";
             }}
           />
-        ) : (
-          <div
-            style={{
-              width: 50,
-              height: 50,
-              background: "#f0f0f0",
-              borderRadius: "4px",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            No image
-          </div>
         );
       },
     },
@@ -780,37 +780,94 @@ const TrainingProgramsAdmin = () => {
           </Space>
 
           {/* Program Image with updated rendering */}
-          <Form.Item label="Program Image">
+          <Form.Item
+            label="Program Image"
+            name="image_upload"
+            rules={[
+              {
+                required:
+                  modalType === "add" && !form.getFieldValue("image_url_input"),
+                message: "Please upload a program image or provide a URL",
+              },
+            ]}
+          >
             <Upload
               name="image"
               listType="picture-card"
-              className="avatar-uploader"
-              showUploadList={false}
-              beforeUpload={beforeUpload}
-              onChange={handleChange}
+              showUploadList={true}
+              beforeUpload={(file) => {
+                const isJpgOrPng =
+                  file.type === "image/jpeg" || file.type === "image/png";
+                if (!isJpgOrPng) {
+                  message.error("You can only upload JPG/PNG files!");
+                  return Upload.LIST_IGNORE;
+                }
+                const isLt2M = file.size / 1024 / 1024 < 2;
+                if (!isLt2M) {
+                  message.error("Image must be smaller than 2MB!");
+                  return Upload.LIST_IGNORE;
+                }
+
+                // Preview the image locally
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  setImageUrl(e.target.result);
+                };
+                reader.readAsDataURL(file);
+
+                // Update fileList
+                setFileList([file]);
+
+                // Return false to prevent automatic upload
+                return false;
+              }}
               fileList={fileList}
+              onRemove={() => {
+                setFileList([]);
+                setImageUrl("");
+              }}
             >
-              {renderImagePreview()}
+              {fileList.length === 0 && (
+                <div>
+                  <PlusOutlined />
+                  <div style={{ marginTop: 8 }}>Upload</div>
+                </div>
+              )}
             </Upload>
-            {imageUrl && (
-              <Button
-                type="text"
-                danger
-                onClick={() => {
-                  setImageUrl("");
-                  setFileList([]);
-                  form.setFieldsValue({ image_url: "" });
-                }}
-              >
-                Remove image
-              </Button>
-            )}
           </Form.Item>
+          {imageUrl && (
+            <div style={{ marginTop: 8 }}>
+              <img
+                src={
+                  imageUrl.startsWith("data:")
+                    ? imageUrl
+                    : getFullImageUrl(imageUrl)
+                }
+                alt="Preview"
+                style={{ maxWidth: "100%", maxHeight: 200 }}
+                onError={(e) => {
+                  console.error("Preview image failed to load:", imageUrl);
+                  e.target.onerror = null;
+                  e.target.src =
+                    "https://via.placeholder.com/400x200?text=Image+Error";
+                }}
+              />
+            </div>
+          )}
 
           <Form.Item
-            name="image_url"
+            name="image_url_input" // Changed from image_url to image_url_input
             label="Or Enter Image URL"
-            rules={[{ type: "url", message: "Please enter a valid URL" }]}
+            rules={[
+              {
+                type: "url",
+                message: "Please enter a valid URL",
+              },
+              {
+                required: modalType === "add" && fileList.length === 0,
+                message: "Please upload an image or provide a URL",
+              },
+            ]}
           >
             <Input
               placeholder="Enter image URL directly"
