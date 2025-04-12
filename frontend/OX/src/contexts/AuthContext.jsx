@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Login function that redirects based on role
-  const login = async (credentials) => {
+  const login = async (email, password) => {
     try {
       const response = await axios.post("/api/auth/login", credentials);
       const { token } = response.data;
@@ -43,6 +43,9 @@ export const AuthProvider = ({ children }) => {
       if (token) {
         sessionStorage.setItem("token", token);
         localStorage.setItem("token", token);
+
+        // Add this line to store the email
+        localStorage.setItem("userEmail", email);
 
         // Set user in context
         const decodedToken = jwtDecode(token);

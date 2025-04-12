@@ -204,8 +204,8 @@ const Navbar = () => {
                     }`}
                     aria-label="User menu"
                   >
-                    <span className="text-sm font-medium hidden sm:block">
-                      {userName || "User"}
+                    <span className="text-sm font-medium hidden sm:block max-w-[120px] truncate">
+                      {localStorage.getItem("userEmail") || "User"}
                     </span>
                     <FaUserCircle className="text-lg" />
                   </button>

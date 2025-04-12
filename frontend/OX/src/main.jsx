@@ -40,12 +40,6 @@ import {
 } from "./components/routes/ProtectedRoute.jsx";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import {
-  validateEmail,
-  validatePassword,
-  EMAIL_PATTERN,
-  PASSWORD_PATTERN,
-} from "./utils/validation.js"
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -182,7 +176,6 @@ const router = createBrowserRouter(
         }
       >
         <Route index element={<AdminDashboard />} />
-        <Route path="workout-plans" element={<TrainingProgramsAdmin />} />
         <Route path="nutrition-plans" element={<NutritionPlansAdmin />} />
         <Route path="supplements" element={<SupplementsAdmin />} />
         <Route path="users" element={<UsersAdmin />} />
