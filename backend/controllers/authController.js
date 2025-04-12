@@ -294,3 +294,123 @@ export const loginController = async (req, res) => {
     });
   }
 };
+
+// Add this function to your authController.js
+
+export const resetPassword = async (req, res) => {
+  const { email, otp, password } = req.body;
+
+  try {
+    // Find user by email
+    const userResult = await con.query(
+      "SELECT * FROM users WHERE user_email = $1",
+      [email]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = userResult.rows[0];
+
+    // Check if verification token exists and isn't expired
+    if (!user.verification_token || user.token_expires_at < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset code expired or invalid",
+      });
+    }
+
+    // Check if the first 6 characters of the token match the OTP code
+    const tokenCode = user.verification_token.substring(0, 6).toUpperCase();
+    if (otp.toUpperCase() !== tokenCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid reset code",
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Update user password and remove verification token
+    await con.query(
+      "UPDATE users SET user_password = $1, verification_token = NULL WHERE user_id = $2",
+      [hashedPassword, user.user_id]
+    );
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Password reset successfully. You can now login with your new password.",
+    });
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error resetting password",
+      error: error.message,
+    });
+  }
+};
+
+// Add this function to your authController.js
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // Find user by email
+    const result = await con.query(
+      "SELECT * FROM users WHERE user_email = $1",
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Generate new verification token
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 1); // Token valid for 1 hour
+
+    // Update user with new token
+    await con.query(
+      "UPDATE users SET verification_token = $1, token_expires_at = $2 WHERE user_id = $3",
+      [verificationToken, tokenExpiresAt, user.user_id]
+    );
+
+    // Send email with OTP code (first 6 chars of the token)
+    const otpCode = verificationToken.substring(0, 6).toUpperCase();
+
+    // You can use your existing sendVerificationEmail or create a new one for reset
+    await sendVerificationEmail(
+      email,
+      verificationToken,
+      "Password Reset Code",
+      `Your password reset code is: ${otpCode}. Valid for 1 hour.`
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Reset code sent to your email",
+    });
+  } catch (error) {
+    console.error("Error in forgot password:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error processing request",
+      error: error.message,
+    });
+  }
+};

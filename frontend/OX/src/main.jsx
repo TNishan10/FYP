@@ -13,8 +13,8 @@ import {
 import VerifyEmail from "./pages/VerifyEmail.jsx";
 import ExerciseDetail from "./pages/ExerciseDetail.jsx";
 import Exercise from "./pages/Exercise.jsx";
-import Login from "./pages/Login.jsx";
-import Register from "./pages/Register.jsx";
+import Login from "./pages/Login/index.jsx";
+import Register from "./pages/Register/index.jsx";
 import Supplement from "./pages/Supplement.jsx";
 import UserInfo from "./pages/User/UserInfo.jsx";
 import App from "./App.jsx";
@@ -38,6 +38,14 @@ import {
   AdminRoute,
   UserRoute,
 } from "./components/routes/ProtectedRoute.jsx";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import {
+  validateEmail,
+  validatePassword,
+  EMAIL_PATTERN,
+  PASSWORD_PATTERN,
+} from "./utils/validation.js"
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -187,6 +195,7 @@ const router = createBrowserRouter(
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <AuthProvider>
+      <ToastContainer position="top-right" autoClose={3000} />
       <RouterProvider router={router} />
     </AuthProvider>
   </StrictMode>

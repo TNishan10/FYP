@@ -20,6 +20,8 @@ import {
   verifyEmail,
   resendVerification,
   verifyCode,
+  forgotPassword,
+  resetPassword,
 } from "../controllers/authController.js";
 
 import {
@@ -72,11 +74,11 @@ import {
 import { requireSignIn, isAdmin } from "../middlewares/authMiddleware.js";
 // Add these new imports for email verification testing
 import { sendVerificationEmail } from "../utility/emailService.js";
-import {
-  forgotPassword,
-  verifyResetOTP,
-  resetPassword,
-} from "../controllers/passwordResetController.js";
+// import {
+//   forgotPassword,
+//   verifyResetOTP,
+//   resetPassword,
+// } from "../controllers/passwordResetController.js";
 
 import {
   searchFoods,
@@ -136,6 +138,8 @@ router.post("/register", registerController);
 router.post("/login", loginController);
 router.post("/verify-email", verifyEmail);
 router.post("/resend-verification", resendVerification);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 // Email verification testing routes
 
@@ -273,9 +277,9 @@ router.get("/check-verification", requireSignIn, async (req, res) => {
   }
 });
 
-router.post("/forgot-password", forgotPassword);
-router.post("/verify-otp", verifyResetOTP);
-router.post("/reset-password", resetPassword);
+// router.post("/forgot-password", forgotPassword);
+// router.post("/verify-otp", verifyResetOTP);
+// router.post("/reset-password", resetPassword);
 
 // // Protected Routes
 // router.get("/healthcondition", requireSignIn, UserHealthCondition);
