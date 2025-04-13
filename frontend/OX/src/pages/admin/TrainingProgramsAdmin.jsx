@@ -24,29 +24,52 @@ const TrainingProgramsAdmin = () => {
     setLoading(true);
     try {
       const result = await fetchTrainingPrograms();
-      
+
       if (result.success) {
-        // Process each program to ensure image_urls are properly formatted
+        // Replace this entire mapping section
         const processedPrograms = result.data.map((program) => {
+          // Check if image_url is valid before processing
+          if (
+            !program.image_url ||
+            program.image_url === "undefined" ||
+            program.image_url === "null"
+          ) {
+            return {
+              ...program,
+              original_image_url: null,
+              image_url: null,
+            };
+          }
+
           // For Cloudinary URLs, don't process them further
-          if (program.image_url?.includes("cloudinary.com")) {
+          if (program.image_url.includes("cloudinary.com")) {
             return {
               ...program,
               original_image_url: program.image_url,
             };
           }
 
-          // For other URLs, process them
-          const fullImageUrl =
-            program.image_url && program.image_url !== "undefined"
-              ? getFullImageUrl(program.image_url)
-              : null;
+          // For other URLs, process them with additional validation
+          try {
+            const fullImageUrl = getFullImageUrl(program.image_url);
+            // Validate the URL
+            new URL(fullImageUrl); // This will throw an error if invalid
 
-          return {
-            ...program,
-            original_image_url: program.image_url,
-            image_url: fullImageUrl,
-          };
+            return {
+              ...program,
+              original_image_url: program.image_url,
+              image_url: fullImageUrl,
+            };
+          } catch (error) {
+            console.warn(
+              `Invalid image URL for program ${program.program_id}: ${program.image_url}`
+            );
+            return {
+              ...program,
+              original_image_url: program.image_url,
+              image_url: null, // Use null for invalid URLs
+            };
+          }
         });
 
         setPrograms(processedPrograms);
@@ -55,7 +78,6 @@ const TrainingProgramsAdmin = () => {
       setLoading(false);
     }
   };
-
   const handleAdd = () => {
     setModalType("add");
     setSelectedProgram(null);
