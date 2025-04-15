@@ -84,6 +84,7 @@ export const createTrainingProgram = async (req, res) => {
       exercises = [],
       frequency = "Not specified",
       highlights = null,
+      image = null,
     } = req.body;
 
     // Add this validation before your SQL query
@@ -95,6 +96,20 @@ export const createTrainingProgram = async (req, res) => {
     }
 
     let imageUrl = null;
+
+    if (image && image.startsWith("data:image")) {
+      try {
+        console.log("Processing base64 image...");
+        const uploadResult = await cloudinary.uploader.upload(image, {
+          folder: "training_programs",
+        });
+        imageUrl = uploadResult.secure_url;
+        console.log("Image uploaded successfully:", imageUrl);
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload error:", cloudinaryError);
+        // Continue without image if upload fails
+      }
+    }
 
     let formattedHighlights = highlights;
     if (highlights && typeof highlights === "string") {
@@ -118,7 +133,7 @@ export const createTrainingProgram = async (req, res) => {
     });
 
     // Upload image if provided
-    if (req.body.image) {
+    if (req.body.image && req.body.image.startsWith("data:image")) {
       try {
         console.log("Attempting to upload image to Cloudinary...");
         const uploadResult = await cloudinary.uploader.upload(req.body.image, {
@@ -153,13 +168,13 @@ export const createTrainingProgram = async (req, res) => {
       [
         title,
         description,
-        imageUrl || null,
+        imageUrl,
         goal_type,
         difficulty,
         duration,
         frequency,
         formattedHighlights,
-        req.body.is_featured || false,
+        false,
         "",
       ]
     );
@@ -432,41 +447,26 @@ export const deleteTrainingProgram = async (req, res) => {
 };
 
 // Get featured training program - updated to use is_featured column
-export const getFeaturedTrainingProgram = async (req, res) => {
+
+export const getFeaturedProgram = async (req, res) => {
   try {
-    // Query using is_featured column instead of joining with featured_programs table
-    const result = await con.query(`
-      SELECT * FROM training_programs 
-      WHERE is_featured = TRUE
-      ORDER BY updated_at DESC
-      LIMIT 1
-    `);
+    console.log("Fetching featured programs"); // Add this debugging line
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No featured program found",
-      });
-    }
-
-    // Get the program exercises
-    const programId = result.rows[0].program_id;
-    const exercisesResult = await con.query(
-      `SELECT * FROM program_exercises WHERE program_id = $1 ORDER BY exercise_order`,
-      [programId]
+    const featuredPrograms = await con.query(
+      `SELECT * FROM training_programs 
+       WHERE is_featured = true 
+       ORDER BY created_at DESC
+       LIMIT 1`
     );
 
-    const program = {
-      ...result.rows[0],
-      exercises: exercisesResult.rows,
-    };
+    console.log("Featured programs query result:", featuredPrograms.rows); // Debug
 
     return res.status(200).json({
       success: true,
-      data: program,
+      data: featuredPrograms.rows[0], // Return the first featured program
     });
   } catch (error) {
-    console.error("Error getting featured program:", error);
+    console.error("Error getting featured programs:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",

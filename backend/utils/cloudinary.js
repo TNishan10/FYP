@@ -8,8 +8,9 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "dywgqhmpo",
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  api_key: process.env.CLOUDINARY_API_KEY || "272863218633572",
+  api_secret:
+    process.env.CLOUDINARY_API_SECRET || "M12v9vQWULnATHhz2sKjjVNovbc",
 });
 
 /**

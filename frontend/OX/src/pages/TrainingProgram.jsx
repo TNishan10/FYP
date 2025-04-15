@@ -7,6 +7,7 @@ import ProgramGrid from "../components/training-programs/ProgramGrid";
 import FeaturedProgram from "../components/training-programs/FeaturedProgram";
 import ProgramPreview from "../components/training-programs/ProgramPreview";
 import PDFPreviewModal from "../components/common/PDFPreviewModal";
+import api from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 
 const { Title, Paragraph } = Typography;
@@ -45,9 +46,8 @@ const TrainingProgram = () => {
 
       // Fetch featured program
       try {
-        const featuredResponse = await axios.get(
-          "http://localhost:8000/api/v1/auth/training-programs/featured"
-        );
+        const featuredResponse = await api.trainingPrograms.getFeatured();
+
         if (featuredResponse.data.success) {
           setFeaturedProgram(featuredResponse.data.data);
         }
@@ -196,7 +196,7 @@ const TrainingProgram = () => {
         onCancel={() => setPreviewVisible(false)}
         footer={null}
         width={1000}
-        bodyStyle={{ padding: 0 }}
+        styles={{ body: { padding: 0 } }}
       >
         {selectedProgram && (
           <ProgramPreview

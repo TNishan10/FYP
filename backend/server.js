@@ -64,8 +64,8 @@ app.use(
 // File upload middleware with enhanced configuration
 app.use(
   fileUpload({
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
     createParentPath: true,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max file size
     useTempFiles: true,
     tempFileDir: path.join(__dirname, "tmp"), // Use a local temp directory
     debug: true, // Enable debugging

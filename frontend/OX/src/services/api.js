@@ -17,12 +17,18 @@ const api = {
 
     create: (programData) =>
       axios.post(`${API_URL}/api/v1/auth/training-programs`, programData, {
-        headers: { Authorization: `Bearer ${token()}` },
+        headers: {
+          Authorization: `Bearer ${token()}`,
+          "Content-Type": "application/json", // Add this line
+        },
       }),
 
     update: (id, programData) =>
       axios.put(`${API_URL}/api/v1/auth/training-programs/${id}`, programData, {
-        headers: { Authorization: `Bearer ${token()}` },
+        headers: {
+          Authorization: `Bearer ${token()}`,
+          "Content-Type": "application/json", // Add this line
+        },
       }),
 
     delete: (id) =>

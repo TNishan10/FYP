@@ -2,47 +2,73 @@ import React, { useState } from "react";
 import { Upload, Button, message } from "antd";
 import { UploadOutlined, LoadingOutlined } from "@ant-design/icons";
 import axios from "axios";
+import { API_URL } from "../../config";
 
 const ImageUploader = ({ value, onChange }) => {
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState(value);
 
+  // Helper function to convert file to base64
+  const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const uploadImage = async (file) => {
-    setLoading(true);
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "ox_fit_uploads"); // Your Cloudinary upload preset
-
     try {
+      setLoading(true);
+
+      // Convert file to base64
+      const base64 = await convertToBase64(file);
+
+      // Send directly to backend instead of Cloudinary
       const response = await axios.post(
-        "https://api.cloudinary.com/v1_1/your-cloud-name/image/upload", // Replace with your cloud name
-        formData
+        `${API_URL}/api/v1/auth/upload-image`,
+        { image: base64 },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${
+              sessionStorage.getItem("token") || localStorage.getItem("token")
+            }`,
+          },
+        }
       );
 
-      const url = response.data.secure_url;
-      setImageUrl(url);
-      onChange(url);
-      message.success("Image uploaded successfully");
+      if (response.data.success) {
+        const url = response.data.imageUrl;
+        setImageUrl(url);
+        onChange(url);
+        message.success("Image uploaded successfully");
+      } else {
+        throw new Error(response.data.message || "Upload failed");
+      }
     } catch (error) {
-      console.error("Upload failed:", error);
-      message.error("Failed to upload image");
+      console.error("Image upload error:", error);
+      message.error(
+        "Failed to upload image: " +
+          (error.response?.data?.message || error.message)
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const beforeUpload = (file) => {
-    const isImage = file.type.startsWith("image/");
-    if (!isImage) {
-      message.error("You can only upload image files!");
-      return false;
+    const isJpgOrPng = file.type === "image/jpeg" || file.type === "image/png";
+    if (!isJpgOrPng) {
+      message.error("You can only upload JPG/PNG files!");
+      return Upload.LIST_IGNORE;
     }
 
     const isLt2M = file.size / 1024 / 1024 < 2;
     if (!isLt2M) {
       message.error("Image must be smaller than 2MB!");
-      return false;
+      return Upload.LIST_IGNORE;
     }
 
     uploadImage(file);

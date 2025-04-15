@@ -1,3 +1,5 @@
+window.CSSINJS_DISABLE_WARNING = true;
+
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
@@ -9,6 +11,9 @@ import {
   Route,
   RouterProvider,
 } from "react-router-dom";
+
+import { StyleProvider } from "@ant-design/cssinjs";
+import { ConfigProvider } from "antd";
 
 import VerifyEmail from "./pages/VerifyEmail.jsx";
 import ExerciseDetail from "./pages/ExerciseDetail.jsx";
@@ -187,9 +192,13 @@ const router = createBrowserRouter(
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <AuthProvider>
-      <ToastContainer position="top-right" autoClose={3000} />
-      <RouterProvider router={router} />
-    </AuthProvider>
+    <StyleProvider hashPriority="high">
+      <ConfigProvider>
+        <AuthProvider>
+          <ToastContainer position="top-right" autoClose={3000} />
+          <RouterProvider router={router} />
+        </AuthProvider>
+      </ConfigProvider>
+    </StyleProvider>
   </StrictMode>
 );

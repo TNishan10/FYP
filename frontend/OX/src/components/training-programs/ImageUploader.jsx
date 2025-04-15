@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { Form, Upload, message, Input } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined, LoadingOutlined } from "@ant-design/icons";
 import { getFullImageUrl } from "../../utils/imageHelper";
 
 const ImageUploader = ({
@@ -10,6 +10,8 @@ const ImageUploader = ({
   setFileList,
   form,
 }) => {
+  const [loading, setLoading] = useState(false);
+
   const beforeUpload = (file) => {
     const isJpgOrPng = file.type === "image/jpeg" || file.type === "image/png";
     if (!isJpgOrPng) {
@@ -23,23 +25,40 @@ const ImageUploader = ({
       return Upload.LIST_IGNORE;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setImageUrl(e.target.result);
-    };
-    reader.readAsDataURL(file);
+    setLoading(true);
 
-    setFileList([
-      {
-        uid: `-${Date.now()}`,
-        name: file.name,
-        status: "done",
-        originFileObj: file,
-      },
-    ]);
+    // Convert to base64 for preview and submission
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const base64 = reader.result;
+      setImageUrl(base64);
+      form.setFieldsValue({ image: base64 });
+      setLoading(false);
+
+      setFileList([
+        {
+          uid: `-${Date.now()}`,
+          name: file.name,
+          status: "done",
+          originFileObj: file,
+        },
+      ]);
+    };
 
     return false; // prevent auto upload
   };
+
+  const handleChange = ({ fileList: newFileList }) => {
+    setFileList(newFileList);
+  };
+
+  const uploadButton = (
+    <div>
+      {loading ? <LoadingOutlined /> : <PlusOutlined />}
+      <div style={{ marginTop: 8 }}>Upload</div>
+    </div>
+  );
 
   return (
     <>
@@ -58,18 +77,19 @@ const ImageUploader = ({
           listType="picture-card"
           showUploadList={true}
           beforeUpload={beforeUpload}
+          onChange={handleChange}
           fileList={fileList}
+          customRequest={({ onSuccess }) => {
+            // Mock the upload success since we handle manually
+            setTimeout(() => onSuccess("ok"), 0);
+          }}
           onRemove={() => {
             setFileList([]);
             setImageUrl("");
+            form.setFieldsValue({ image: null });
           }}
         >
-          {fileList.length === 0 && (
-            <div>
-              <PlusOutlined />
-              <div style={{ marginTop: 8 }}>Upload</div>
-            </div>
-          )}
+          {fileList.length === 0 && uploadButton}
         </Upload>
       </Form.Item>
 

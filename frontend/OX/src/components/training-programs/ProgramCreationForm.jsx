@@ -28,6 +28,8 @@ const { Option } = Select;
 const ProgramCreationForm = ({ initialValues = null, onSubmit, loading }) => {
   const [form] = Form.useForm();
   const [exercises, setExercises] = useState([]);
+  const [imageUrl, setImageUrl] = useState(initialValues?.image_url || "");
+  const [fileList, setFileList] = useState([]);
 
   // Initialize form with initial values if provided
   useEffect(() => {
@@ -61,12 +63,12 @@ const ProgramCreationForm = ({ initialValues = null, onSubmit, loading }) => {
 
     const formattedExercises = formatExercisesForBackend(exercises);
 
-    const { image, ...restValues } = values;
-    // Destructure to remove image from values
+    // Prepare form data with the image
     const formData = {
-      ...restValues,
+      ...values,
       frequency: values.frequency || "3-4 times per week",
       exercises: formattedExercises,
+      image: imageUrl, // Add the image URL or base64 data
     };
 
     console.log("Submitting form data:", formData);
@@ -346,7 +348,13 @@ const ProgramCreationForm = ({ initialValues = null, onSubmit, loading }) => {
         <Col xs={24} md={8}>
           <Card title="Program Image" className="mb-4">
             <Form.Item name="image" label="Upload Cover Image">
-              <ImageUploader />
+              <ImageUploader
+                imageUrl={imageUrl}
+                setImageUrl={setImageUrl}
+                fileList={fileList}
+                setFileList={setFileList}
+                form={form}
+              />
             </Form.Item>
             <Text type="secondary">
               Upload an image that represents this program. For best results,
