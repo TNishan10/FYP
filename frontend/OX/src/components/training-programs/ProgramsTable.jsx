@@ -1,191 +1,148 @@
-import React, { useState } from "react";
-import { Table, Button, Space, Tag, Modal, message } from "antd";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
-import { deleteTrainingProgram } from "../../utils/trainingProgramsService";
-import { getFullImageUrl } from "../../utils/imageHelper";
+import React from "react";
+import { Table, Button, Tooltip, Tag, Space, Popconfirm } from "antd";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  StarOutlined,
+  StarFilled,
+  FilePdfOutlined,
+} from "@ant-design/icons";
 
-const ProgramsTable = ({ programs, loading, onEdit, onDelete }) => {
-  const [deletingId, setDeletingId] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+const ProgramsTable = ({
+  programs,
+  loading,
+  onEdit,
+  onDelete,
+  onPreview,
+  onSetFeatured,
+}) => {
+  const getDifficultyColor = (level) => {
+    switch (level?.toLowerCase()) {
+      case "beginner":
+        return "green";
+      case "intermediate":
+        return "blue";
+      case "advanced":
+        return "orange";
+      case "expert":
+        return "red";
+      default:
+        return "default";
+    }
+  };
 
-  const handleDelete = async (programId) => {
-    try {
-      console.log("Delete request initiated for program ID:", programId);
-      setDeleteLoading(true);
-      setDeletingId(programId);
-
-      const result = await deleteTrainingProgram(programId);
-
-      if (result.success) {
-        onDelete(programId);
-      }
-    } finally {
-      setDeleteLoading(false);
-      setDeletingId(null);
+  const getGoalColor = (goal) => {
+    switch (goal?.toLowerCase()) {
+      case "strength":
+        return "purple";
+      case "hypertrophy":
+        return "magenta";
+      case "endurance":
+        return "cyan";
+      case "weight loss":
+        return "green";
+      case "general fitness":
+        return "blue";
+      default:
+        return "default";
     }
   };
 
   const columns = [
     {
-      title: "Image",
-      dataIndex: "image_url",
-      key: "image_url",
-      render: (url, record) => {
-        // Determine the best image URL to use
-        const imageSource =
-          url ||
-          (record.original_image_url &&
-          record.original_image_url !== "undefined"
-            ? getFullImageUrl(record.original_image_url)
-            : null);
-
-        if (!imageSource) {
-          return (
-            <div
-              style={{
-                width: 50,
-                height: 50,
-                background: "#f0f0f0",
-                borderRadius: "4px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              No image
-            </div>
-          );
-        }
-
-        return (
-          <img
-            src={imageSource}
-            alt={record.title || "Program image"}
-            style={{
-              width: 50,
-              height: 50,
-              objectFit: "cover",
-              borderRadius: "4px",
-            }}
-            onError={(e) => {
-              console.error("Image failed to load:", imageSource);
-              e.target.onerror = null;
-              e.target.src =
-                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-size='8' text-anchor='middle' dy='.3em' fill='%23999'%3ENo Image%3C/text%3E%3C/svg%3E";
-            }}
-          />
-        );
-      },
-    },
-    {
       title: "Title",
       dataIndex: "title",
       key: "title",
-      sorter: (a, b) => a.title.localeCompare(b.title),
+      render: (text) => <strong>{text}</strong>,
     },
     {
-      title: "Goal Type",
+      title: "Goal",
       dataIndex: "goal_type",
       key: "goal_type",
-      render: (goal_type) => (
-        <Tag
-          color={
-            goal_type === "hypertrophy"
-              ? "#f50"
-              : goal_type === "strength"
-              ? "#722ed1"
-              : goal_type === "cardio"
-              ? "#1890ff"
-              : goal_type === "endurance"
-              ? "#52c41a"
-              : goal_type === "crossfit"
-              ? "#faad14"
-              : goal_type === "hybrid"
-              ? "#13c2c2"
-              : "#108ee9"
-          }
-        >
-          {goal_type}
-        </Tag>
+      render: (goal) => (
+        <Tag color={getGoalColor(goal)}>{goal || "Not specified"}</Tag>
       ),
-      filters: [
-        { text: "Hypertrophy", value: "hypertrophy" },
-        { text: "Strength", value: "strength" },
-        { text: "Cardio", value: "cardio" },
-        { text: "Endurance", value: "endurance" },
-        { text: "CrossFit", value: "crossfit" },
-        { text: "Hybrid", value: "hybrid" },
-      ],
-      onFilter: (value, record) => record.goal_type === value,
     },
     {
       title: "Difficulty",
-      dataIndex: "difficulty",
-      key: "difficulty",
-      render: (difficulty) => (
-        <Tag
-          color={
-            difficulty === "beginner"
-              ? "green"
-              : difficulty === "intermediate"
-              ? "blue"
-              : difficulty === "advanced"
-              ? "purple"
-              : "red"
-          }
-        >
-          {difficulty}
-        </Tag>
+      dataIndex: "difficulty_level",
+      key: "difficulty_level",
+      render: (level) => (
+        <Tag color={getDifficultyColor(level)}>{level || "Not specified"}</Tag>
       ),
     },
     {
       title: "Duration",
-      dataIndex: "duration",
-      key: "duration",
+      dataIndex: "duration_weeks",
+      key: "duration_weeks",
+      render: (weeks) => (weeks ? `${weeks} weeks` : "Not specified"),
+    },
+    {
+      title: "Downloads",
+      dataIndex: "download_count",
+      key: "download_count",
+      render: (count) => count || 0,
     },
     {
       title: "Featured",
-      dataIndex: "featured",
-      key: "featured",
-      render: (featured) =>
-        featured ? (
-          <Tag color="gold">Featured</Tag>
-        ) : (
-          <Tag color="default">No</Tag>
-        ),
+      key: "is_featured",
+      dataIndex: "is_featured",
+      render: (featured, record) => (
+        <Button
+          type="text"
+          icon={
+            featured ? (
+              <StarFilled style={{ color: "#faad14" }} />
+            ) : (
+              <StarOutlined />
+            )
+          }
+          onClick={() => onSetFeatured(record.program_id)}
+          title={featured ? "Featured Program" : "Set as featured"}
+        />
+      ),
     },
     {
-      title: "Action",
-      key: "action",
+      title: "Actions",
+      key: "actions",
       render: (_, record) => (
-        <Space size="middle">
-          <Button
-            type="primary"
-            icon={<EditOutlined />}
-            onClick={() => onEdit(record)}
-          >
-            Edit
-          </Button>
-          <Button
-            danger
-            loading={deleteLoading && deletingId === record.program_id}
-            icon={<DeleteOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-
-              Modal.confirm({
-                title: `Delete "${record.title || "this program"}"?`,
-                content: "This action cannot be undone.",
-                okText: "Yes, Delete",
-                okType: "danger",
-                cancelText: "Cancel",
-                onOk: () => handleDelete(record.program_id),
-              });
-            }}
-          >
-            Delete
-          </Button>
+        <Space size="small">
+          <Tooltip title="Preview">
+            <Button
+              icon={<EyeOutlined />}
+              onClick={() => onPreview(record)}
+              size="small"
+            />
+          </Tooltip>
+          <Tooltip title="Edit">
+            <Button
+              icon={<EditOutlined />}
+              onClick={() => onEdit(record)}
+              size="small"
+              type="primary"
+              ghost
+            />
+          </Tooltip>
+          <Tooltip title="Generate PDF">
+            <Button
+              icon={<FilePdfOutlined />}
+              onClick={() => onPreview(record)}
+              size="small"
+              type="default"
+            />
+          </Tooltip>
+          <Tooltip title="Delete">
+            <Popconfirm
+              title="Are you sure you want to delete this program?"
+              onConfirm={() => onDelete(record.program_id)}
+              okText="Yes"
+              cancelText="No"
+              placement="left"
+            >
+              <Button icon={<DeleteOutlined />} danger size="small" />
+            </Popconfirm>
+          </Tooltip>
         </Space>
       ),
     },
@@ -193,11 +150,16 @@ const ProgramsTable = ({ programs, loading, onEdit, onDelete }) => {
 
   return (
     <Table
-      loading={loading}
       dataSource={programs}
       columns={columns}
       rowKey="program_id"
-      pagination={{ pageSize: 10 }}
+      loading={loading}
+      scroll={{ x: 800 }}
+      pagination={{
+        pageSize: 10,
+        showSizeChanger: true,
+        pageSizeOptions: ["10", "20", "50"],
+      }}
     />
   );
 };

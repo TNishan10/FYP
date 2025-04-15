@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Typography, Spin, Alert, message } from "antd";
+import { Typography, Spin, Alert, message, Modal } from "antd";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import ProgramFilter from "../components/TrainingPrograms/ProgramFilter";
-import ProgramGrid from "../components/TrainingPrograms/ProgramGrid";
-import FeaturedProgram from "../components/TrainingPrograms/FeaturedProgram";
+import ProgramFilter from "../components/training-programs/ProgramFilter";
+import ProgramGrid from "../components/training-programs/ProgramGrid";
+import FeaturedProgram from "../components/training-programs/FeaturedProgram";
+import ProgramPreview from "../components/training-programs/ProgramPreview";
+import PDFPreviewModal from "../components/common/PDFPreviewModal";
 import { useAuth } from "../contexts/AuthContext";
 
 const { Title, Paragraph } = Typography;
@@ -17,45 +19,48 @@ const TrainingProgram = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const { isAuthenticated } = useAuth();
+  const [selectedProgram, setSelectedProgram] = useState(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [pdfPreviewVisible, setPdfPreviewVisible] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState(null);
 
   // Fetch training programs on component mount
   useEffect(() => {
-    const fetchPrograms = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        // Fetch all programs
-        const programsResponse = await axios.get(
-          "http://localhost:8000/api/v1/auth/training-programs"
-        );
-
-        if (programsResponse.data.success) {
-          setPrograms(programsResponse.data.data);
-        }
-
-        // Fetch featured program
-        try {
-          const featuredResponse = await axios.get(
-            "http://localhost:8000/api/v1/auth/training-programs/featured"
-          );
-          if (featuredResponse.data.success) {
-            setFeaturedProgram(featuredResponse.data.data);
-          }
-        } catch (featuredError) {
-          console.log("No featured program available");
-          // Not setting an error as this is optional
-        }
-      } catch (error) {
-        console.error("Error fetching programs:", error);
-        setError("Failed to load training programs. Please try again later.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchPrograms();
   }, []);
+
+  const fetchPrograms = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Fetch all programs
+      const programsResponse = await axios.get(
+        "http://localhost:8000/api/v1/auth/training-programs"
+      );
+
+      if (programsResponse.data.success) {
+        setPrograms(programsResponse.data.data);
+      }
+
+      // Fetch featured program
+      try {
+        const featuredResponse = await axios.get(
+          "http://localhost:8000/api/v1/auth/training-programs/featured"
+        );
+        if (featuredResponse.data.success) {
+          setFeaturedProgram(featuredResponse.data.data);
+        }
+      } catch (featuredError) {
+        console.log("No featured program available");
+      }
+    } catch (error) {
+      console.error("Error fetching programs:", error);
+      setError("Failed to load training programs. Please try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter programs based on selected goal
   const filteredPrograms =
@@ -83,9 +88,8 @@ const TrainingProgram = () => {
       );
 
       if (response.data.success) {
-        // Handle the download - either redirect or open in new window
-        window.open(response.data.data.file_url, "_blank");
-        message.success("Download started successfully!");
+        setPdfUrl(response.data.file_url);
+        setPdfPreviewVisible(true);
       }
     } catch (error) {
       console.error("Download error:", error);
@@ -95,6 +99,23 @@ const TrainingProgram = () => {
       } else {
         message.error("Failed to download program. Please try again later.");
       }
+    }
+  };
+
+  const handleProgramClick = (program) => {
+    setSelectedProgram(program);
+    setPreviewVisible(true);
+  };
+
+  const handlePdfDownload = () => {
+    if (pdfUrl) {
+      // Create a temporary link element
+      const a = document.createElement("a");
+      a.href = pdfUrl;
+      a.download = `program-${selectedProgram?.program_id || "download"}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   };
 
@@ -148,7 +169,7 @@ const TrainingProgram = () => {
           <div className="mb-16">
             <FeaturedProgram
               program={featuredProgram}
-              onDownload={() => handleDownload(featuredProgram.program_id)}
+              onView={() => handleProgramClick(featuredProgram)}
             />
           </div>
         )}
@@ -162,8 +183,37 @@ const TrainingProgram = () => {
         </div>
 
         {/* Program Grid */}
-        <ProgramGrid programs={filteredPrograms} onDownload={handleDownload} />
+        <ProgramGrid
+          programs={filteredPrograms}
+          onProgramClick={handleProgramClick}
+        />
       </div>
+
+      {/* Program Detail Modal */}
+      <Modal
+        title={null}
+        open={previewVisible}
+        onCancel={() => setPreviewVisible(false)}
+        footer={null}
+        width={1000}
+        bodyStyle={{ padding: 0 }}
+      >
+        {selectedProgram && (
+          <ProgramPreview
+            program={selectedProgram}
+            onDownload={() => handleDownload(selectedProgram.program_id)}
+            onPdfPreview={() => handleDownload(selectedProgram.program_id)}
+          />
+        )}
+      </Modal>
+
+      {/* PDF Preview Modal */}
+      <PDFPreviewModal
+        visible={pdfPreviewVisible}
+        url={pdfUrl}
+        onClose={() => setPdfPreviewVisible(false)}
+        onDownload={handlePdfDownload}
+      />
     </div>
   );
 };

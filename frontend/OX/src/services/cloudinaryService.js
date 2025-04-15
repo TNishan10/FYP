@@ -1,53 +1,36 @@
-import axios from "axios"; // Using already installed axios
-import CLOUDINARY_CONFIG from "../config/cloudinary";
+import axios from "axios";
 
-/**
- * Uploads an image directly to Cloudinary via REST API
- * @param {File} file - The image file to upload
- * @returns {Promise<string>} The uploaded image URL
- */
-// Add these console logs to better debug the upload process
-export const uploadToCloudinary = async (file) => {
+// Use your actual cloud name and preset
+const CLOUDINARY_URL =
+  import.meta.env.VITE_CLOUDINARY_URL ||
+  "https://api.cloudinary.com/v1_1/dywgqhmpo/upload";
+
+// Change this to match your actual preset name "OX-Fit"
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "OX-Fit";
+
+export const uploadImage = async (file) => {
+  if (!file) return null;
+
   try {
-    // Create form data for the upload
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", CLOUDINARY_CONFIG.uploadPreset);
-    formData.append("folder", CLOUDINARY_CONFIG.folder);
+    formData.append("upload_preset", UPLOAD_PRESET);
 
-    console.log("Starting Cloudinary upload with config:", {
-      cloudName: CLOUDINARY_CONFIG.cloudName,
-      uploadPreset: CLOUDINARY_CONFIG.uploadPreset,
-      folder: CLOUDINARY_CONFIG.folder,
-      fileName: file.name,
-      fileSize: file.size,
-    });
+    console.log("Uploading to:", CLOUDINARY_URL);
+    console.log("Using preset:", UPLOAD_PRESET);
 
-    const response = await axios.post(
-      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
+    const response = await axios.post(CLOUDINARY_URL, formData);
 
-    // Log the complete response for debugging
-    console.log("Cloudinary upload complete!", {
-      url: response.data.secure_url,
-      publicId: response.data.public_id,
-      format: response.data.format,
-      resourceType: response.data.resource_type,
-    });
-
-    // Return the secure URL for the uploaded image
-    return response.data.secure_url;
+    if (response.data && response.data.secure_url) {
+      return response.data.secure_url;
+    } else {
+      throw new Error("Upload successful but no URL returned");
+    }
   } catch (error) {
-    console.error(
-      "Cloudinary upload error details:",
-      error.response?.data || error.message
-    );
-    throw new Error("Failed to upload image to Cloudinary");
+    console.error("Error uploading image:", error);
+    console.error("Response details:", error.response?.data);
+    throw error;
   }
 };
+
+export default { uploadImage };

@@ -1,127 +1,123 @@
 import axios from "axios";
-import { message } from "antd";
-import { API_URL } from "../config";
+import { v4 as uuidv4 } from "uuid";
 
-// Fetch all training programs
-export const fetchTrainingPrograms = async () => {
+const CLOUDINARY_URL =
+  import.meta.env.VITE_CLOUDINARY_URL ||
+  "https://api.cloudinary.com/v1_1/your-cloud-name/upload";
+const UPLOAD_PRESET =
+  import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "ox-fit-uploads";
+
+/**
+ * Uploads an image to Cloudinary
+ * @param {File} file - The image file to upload
+ * @returns {Promise<string>} - The URL of the uploaded image
+ */
+export const uploadImage = async (file) => {
+  if (!file) return null;
+
   try {
-    const token = sessionStorage.getItem("token");
-    if (!token) {
-      message.error("You must be logged in to access this page");
-      return { success: false, data: [] };
-    }
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET);
 
-    const response = await axios.get(
-      `${API_URL}/api/v1/auth/training-programs`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    const response = await axios.post(CLOUDINARY_URL, formData);
 
-    if (response.data && response.data.success) {
-      return { success: true, data: response.data.data || [] };
+    if (response.data && response.data.secure_url) {
+      return response.data.secure_url;
     } else {
-      message.error("Failed to fetch training programs");
-      return { success: false, data: [] };
+      throw new Error("Failed to upload image");
     }
   } catch (error) {
-    console.error("Error fetching programs:", error);
-    message.error("Failed to fetch training programs");
-    return { success: false, data: [] };
+    console.error("Error uploading image to Cloudinary:", error);
+    throw error;
   }
 };
 
-// Create new training program
-export const createTrainingProgram = async (formData) => {
-  try {
-    const token = sessionStorage.getItem("token");
-    if (!token) {
-      message.error("You must be logged in to perform this action");
-      return { success: false };
-    }
-
-    const response = await axios.post(
-      `${API_URL}/api/v1/auth/training-programs`,
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-
-    if (response.status === 200 || response.status === 201) {
-      message.success("Training program created successfully");
-      return { success: true, data: response.data };
-    }
-
-    return { success: false };
-  } catch (error) {
-    console.error("Error creating program:", error);
-    message.error("Failed to create training program");
-    return { success: false };
-  }
+/**
+ * Create a new empty exercise object with a unique ID
+ * @returns {Object} - New exercise object
+ */
+export const createNewExercise = () => {
+  return {
+    id: uuidv4(), // Generate unique ID for frontend management
+    movement: "",
+    intensity: "",
+    weight_used: "",
+    actual_rpe: "",
+    sets: null,
+    reps: null,
+    tempo: "",
+    rest: "",
+    notes: "",
+  };
 };
 
-// Update existing training program
-export const updateTrainingProgram = async (programId, formData) => {
-  try {
-    const token = sessionStorage.getItem("token");
-    if (!token) {
-      message.error("You must be logged in to perform this action");
-      return { success: false };
-    }
+/**
+ * Format exercises from frontend format to backend format
+ * @param {Array} exercises - Array of exercise objects from the form
+ * @returns {Array} - Formatted exercises for backend
+ */
+export const formatExercisesForBackend = (exercises) => {
+  return exercises
+    .map((exercise) => {
+      // Filter out empty fields and the frontend-only id
+      const { id, ...data } = exercise;
 
-    const response = await axios.put(
-      `${API_URL}/api/v1/auth/training-programs/${programId}`,
-      formData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-
-    if (response.status === 200) {
-      message.success("Training program updated successfully");
-      return { success: true, data: response.data };
-    }
-
-    return { success: false };
-  } catch (error) {
-    console.error("Error updating program:", error);
-    message.error("Failed to update training program");
-    return { success: false };
-  }
+      // Convert numeric strings to numbers where appropriate
+      return {
+        movement: data.movement,
+        intensity: data.intensity || null,
+        weight_used: data.weight_used || null,
+        actual_rpe: data.actual_rpe || null,
+        sets: Number(data.sets) || null,
+        reps: Number(data.reps) || null,
+        tempo: data.tempo || null,
+        rest: data.rest || null,
+        notes: data.notes || null,
+      };
+    })
+    .filter((ex) => ex.movement); // Only include exercises with at least a movement name
 };
 
-// Delete a training program
-export const deleteTrainingProgram = async (programId) => {
-  try {
-    const token = sessionStorage.getItem("token");
-    if (!token) {
-      message.error("Authentication failed. Please login again.");
-      return { success: false };
-    }
+/**
+ * Format exercises from backend format to frontend format
+ * @param {Array} exercises - Array of exercise objects from the backend
+ * @returns {Array} - Formatted exercises for frontend form
+ */
+export const formatExercisesForFrontend = (exercises) => {
+  if (!exercises || !Array.isArray(exercises)) return [createNewExercise()];
 
-    const response = await axios.delete(
-      `${API_URL}/api/v1/auth/training-programs/${programId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+  return exercises.map((exercise) => ({
+    id: exercise.exercise_id || uuidv4(),
+    movement: exercise.movement || "",
+    intensity: exercise.intensity || "",
+    weight_used: exercise.weight_used || "",
+    actual_rpe: exercise.actual_rpe || "",
+    sets: exercise.sets || null,
+    reps: exercise.reps || null,
+    tempo: exercise.tempo || "",
+    rest: exercise.rest || "",
+    notes: exercise.notes || "",
+  }));
+};
 
-    if (response.status === 200) {
-      message.success("Program deleted successfully");
-      return { success: true };
-    }
+/**
+ * Validate exercise data
+ * @param {Array} exercises - Array of exercise objects
+ * @returns {boolean} - Whether the exercises are valid
+ */
+export const validateExercises = (exercises) => {
+  if (!exercises || exercises.length === 0) return false;
 
-    return { success: false };
-  } catch (error) {
-    console.error("Delete failed with error:", error);
-    message.error("Failed to delete program");
-    return { success: false };
-  }
+  return exercises.every(
+    (ex) => ex.movement && ex.sets !== null && ex.reps !== null
+  );
+};
+
+export default {
+  uploadImage,
+  createNewExercise,
+  formatExercisesForBackend,
+  formatExercisesForFrontend,
+  validateExercises,
 };

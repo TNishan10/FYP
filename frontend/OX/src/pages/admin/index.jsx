@@ -58,7 +58,7 @@ const AdminDashboard = () => {
       // Fetch workout plans with individual try/catch
       try {
         const workoutPlansResponse = await axios.get(
-          "http://localhost:8000/api/v1/auth/workout-plans",
+          "http://localhost:8000/api/v1/auth/training-programs",
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -184,7 +184,11 @@ const AdminDashboard = () => {
       <Divider style={{ margin: "16px 0" }} />
       <Row gutter={[24, 24]}>
         <Col xs={24} sm={12} md={6}>
-          <Card hoverable style={cardStyles} bodyStyle={{ padding: "24px" }}>
+          <Card
+            hoverable
+            style={cardStyles}
+            styles={{ body: { padding: "24px" } }}
+          >
             <Statistic
               title={
                 <Text strong style={{ fontSize: "16px", color: "#555" }}>
@@ -215,7 +219,11 @@ const AdminDashboard = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card hoverable style={cardStyles} bodyStyle={{ padding: "24px" }}>
+          <Card
+            hoverable
+            style={cardStyles}
+            styles={{ body: { padding: "24px" } }}
+          >
             <Statistic
               title={
                 <Text strong style={{ fontSize: "16px", color: "#555" }}>
@@ -246,7 +254,11 @@ const AdminDashboard = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card hoverable style={cardStyles} bodyStyle={{ padding: "24px" }}>
+          <Card
+            hoverable
+            style={cardStyles}
+            styles={{ body: { padding: "24px" } }}
+          >
             <Statistic
               title={
                 <Text strong style={{ fontSize: "16px", color: "#555" }}>
@@ -277,7 +289,11 @@ const AdminDashboard = () => {
           </Card>
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Card hoverable style={cardStyles} bodyStyle={{ padding: "24px" }}>
+          <Card
+            hoverable
+            style={cardStyles}
+            styles={{ body: { padding: "24px" } }}
+          >
             <Statistic
               title={
                 <Text strong style={{ fontSize: "16px", color: "#555" }}>

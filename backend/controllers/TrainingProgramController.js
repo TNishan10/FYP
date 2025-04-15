@@ -1,103 +1,587 @@
-import con from "../server.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-import { v4 as uuidv4 } from "uuid";
+import con from "../db.js";
+import cloudinary from "../utils/cloudinary.js";
+import generatePDF from "../utils/pdfGenerator.js";
 
-// Get current directory
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Get all training programs with optional filtering
+// Get all training programs
 export const getAllTrainingPrograms = async (req, res) => {
   try {
-    const { goal_type, difficulty } = req.query;
+    const result = await con.query(`
+      SELECT p.*, 
+             COUNT(DISTINCT pd.download_id) as download_count
+      FROM training_programs p
+      LEFT JOIN program_downloads pd ON p.program_id = pd.program_id
+      GROUP BY p.program_id
+      ORDER BY p.created_at DESC
+    `);
 
-    let query = "SELECT * FROM training_programs";
-    const params = [];
-
-    // Add filters if provided
-    if (goal_type || difficulty) {
-      query += " WHERE";
-
-      if (goal_type) {
-        params.push(goal_type);
-        query += ` goal_type = $${params.length}`;
-      }
-
-      if (goal_type && difficulty) {
-        query += " AND";
-      }
-
-      if (difficulty) {
-        params.push(difficulty);
-        query += ` difficulty = $${params.length}`;
-      }
-    }
-
-    query += " ORDER BY featured DESC, created_at DESC";
-
-    const result = await con.query(query, params);
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
+      count: result.rows.length,
       data: result.rows,
     });
   } catch (error) {
-    console.error("Error fetching training programs:", error);
-    res.status(500).json({
+    console.error("Error getting training programs:", error);
+    return res.status(500).json({
       success: false,
-      message: "Error fetching training programs",
+      message: "Server error",
       error: error.message,
     });
   }
 };
 
-// Get a single training program by ID
+// Get training program by ID
 export const getTrainingProgramById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await con.query(
-      "SELECT * FROM training_programs WHERE program_id = $1",
+    // Get the program details
+    const programResult = await con.query(
+      `SELECT * FROM training_programs WHERE program_id = $1`,
       [id]
     );
 
-    if (result.rows.length === 0) {
+    if (programResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Training program not found",
       });
     }
 
-    res.status(200).json({
+    // Get the program exercises
+    const exercisesResult = await con.query(
+      `SELECT * FROM program_exercises WHERE program_id = $1 ORDER BY exercise_order`,
+      [id]
+    );
+
+    const program = {
+      ...programResult.rows[0],
+      exercises: exercisesResult.rows,
+    };
+
+    return res.status(200).json({
       success: true,
-      data: result.rows[0],
+      data: program,
     });
   } catch (error) {
-    console.error("Error fetching training program:", error);
-    res.status(500).json({
+    console.error("Error getting training program:", error);
+    return res.status(500).json({
       success: false,
-      message: "Error fetching training program",
+      message: "Server error",
       error: error.message,
     });
   }
 };
 
-// Record a program download
+// Create a new training program
+export const createTrainingProgram = async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      goal_type,
+      difficulty,
+      duration,
+      exercises = [],
+      frequency = "Not specified",
+      highlights = null,
+    } = req.body;
+
+    // Add this validation before your SQL query
+    if (!title || !description || !goal_type || !difficulty || !duration) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields",
+      });
+    }
+
+    let imageUrl = null;
+
+    let formattedHighlights = highlights;
+    if (highlights && typeof highlights === "string") {
+      // Convert string to PostgreSQL array format: '{item1,item2}'
+      formattedHighlights = `{${highlights}}`;
+    } else if (Array.isArray(highlights)) {
+      // Format array properly for PostgreSQL
+      formattedHighlights = `{${highlights.join(",")}}`;
+    }
+
+    // Log the data you're trying to insert
+    console.log("Inserting program with data:", {
+      title,
+      description,
+      imageUrl,
+      goal_type,
+      difficulty,
+      duration,
+      frequency,
+      formattedHighlights,
+    });
+
+    // Upload image if provided
+    if (req.body.image) {
+      try {
+        console.log("Attempting to upload image to Cloudinary...");
+        const uploadResult = await cloudinary.uploader.upload(req.body.image, {
+          folder: "training_programs",
+        });
+        imageUrl = uploadResult.secure_url;
+        console.log("Image uploaded successfully:", imageUrl);
+      } catch (cloudinaryError) {
+        console.error("Cloudinary upload error:", cloudinaryError);
+        // Continue without image if upload fails
+        imageUrl = null;
+      }
+    }
+
+    // Begin transaction
+    await con.query("BEGIN");
+
+    // Insert the program
+    const programResult = await con.query(
+      `INSERT INTO training_programs(
+        title, 
+        description, 
+        image_url, 
+        goal_type, 
+        difficulty, 
+        duration, 
+        frequency,
+        highlights,
+        is_featured,
+        file_url
+      ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [
+        title,
+        description,
+        imageUrl || null,
+        goal_type,
+        difficulty,
+        duration,
+        frequency,
+        formattedHighlights,
+        req.body.is_featured || false,
+        "",
+      ]
+    );
+
+    const programId = programResult.rows[0].program_id;
+
+    // Insert exercises if provided
+    if (exercises && exercises.length > 0) {
+      for (let i = 0; i < exercises.length; i++) {
+        const ex = exercises[i];
+        await con.query(
+          `INSERT INTO program_exercises(
+            program_id,
+            movement,
+            intensity_kg,
+            weight_used,
+            actual_rpe,
+            sets,
+            reps,
+            tempo,
+            rest,
+            coaches_notes,
+            exercise_order
+          ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            programId,
+            ex.movement,
+            ex.intensity || null,
+            ex.weight_used || null,
+            ex.actual_rpe || null,
+            ex.sets,
+            ex.reps,
+            ex.tempo || null,
+            ex.rest || null,
+            ex.notes || null,
+            i + 1, // exercise_order starts from 1
+          ]
+        );
+      }
+    }
+
+    // Commit transaction
+    await con.query("COMMIT");
+
+    return res.status(201).json({
+      success: true,
+      message: "Training program created successfully",
+      data: programResult.rows[0],
+    });
+  } catch (error) {
+    // Rollback transaction in case of error
+    await con.query("ROLLBACK");
+    console.error("Error creating training program:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// Update a training program
+export const updateTrainingProgram = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      description,
+      goal_type,
+      difficulty,
+      duration,
+      exercises = [],
+      frequency = null,
+      highlights = null,
+    } = req.body;
+
+    // Check if program exists
+    const existingProgram = await con.query(
+      `SELECT * FROM training_programs WHERE program_id = $1`,
+      [id]
+    );
+
+    if (existingProgram.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Training program not found",
+      });
+    }
+
+    let imageUrl = existingProgram.rows[0].image_url;
+
+    let formattedHighlights = highlights;
+    if (highlights && typeof highlights === "string") {
+      formattedHighlights = `{${highlights}}`;
+    } else if (Array.isArray(highlights)) {
+      formattedHighlights = `{${highlights.join(",")}}`;
+    }
+
+    // Upload new image if provided
+    if (req.body.image && req.body.image !== imageUrl) {
+      // Delete old image if it exists and is from Cloudinary
+      if (imageUrl && imageUrl.includes("cloudinary")) {
+        const publicId = imageUrl.split("/").pop().split(".")[0];
+        await cloudinary.uploader.destroy(`training_programs/${publicId}`);
+      }
+
+      // Upload new image
+      const uploadResult = await cloudinary.uploader.upload(req.body.image, {
+        folder: "training_programs",
+      });
+      imageUrl = uploadResult.secure_url;
+    }
+
+    // Begin transaction
+    await con.query("BEGIN");
+
+    // Update the program
+    const updatedProgram = await con.query(
+      `UPDATE training_programs SET
+        title = $1,
+        description = $2,
+        image_url = $3,
+        goal_type = $4,
+        difficulty = $5,
+        duration = $6,
+        frequency = $7,
+        highlights = $8,
+        file_url = $9,
+        updated_at = NOW()
+      WHERE program_id = $10 RETURNING *`,
+      [
+        title,
+        description,
+        imageUrl,
+        goal_type,
+        difficulty,
+        duration,
+        frequency,
+        formattedHighlights,
+        existingProgram.rows[0].file_url,
+        id,
+      ]
+    );
+
+    // Delete existing exercises
+    await con.query(`DELETE FROM program_exercises WHERE program_id = $1`, [
+      id,
+    ]);
+
+    // Insert updated exercises
+    if (exercises && exercises.length > 0) {
+      for (let i = 0; i < exercises.length; i++) {
+        const ex = exercises[i];
+        await con.query(
+          `INSERT INTO program_exercises(
+            program_id,
+            movement,
+            intensity_kg,
+            weight_used,
+            actual_rpe,
+            sets,
+            reps,
+            tempo,
+            rest,
+            coaches_notes,
+            exercise_order
+          ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [
+            id,
+            ex.movement,
+            ex.intensity || null,
+            ex.weight_used || null,
+            ex.actual_rpe || null,
+            ex.sets,
+            ex.reps,
+            ex.tempo || null,
+            ex.rest || null,
+            ex.notes || null,
+            i + 1, // exercise_order starts from 1
+          ]
+        );
+      }
+    }
+
+    // Commit transaction
+    await con.query("COMMIT");
+
+    return res.status(200).json({
+      success: true,
+      message: "Training program updated successfully",
+      data: updatedProgram.rows[0],
+    });
+  } catch (error) {
+    // Rollback transaction in case of error
+    await con.query("ROLLBACK");
+    console.error("Error updating training program:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// Delete a training program
+export const deleteTrainingProgram = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if program exists
+    const existingProgram = await con.query(
+      `SELECT * FROM training_programs WHERE program_id = $1`,
+      [id]
+    );
+
+    if (existingProgram.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Training program not found",
+      });
+    }
+
+    // Begin transaction
+    await con.query("BEGIN");
+
+    // Delete from featured if it was featured
+    await con.query(`DELETE FROM featured_programs WHERE program_id = $1`, [
+      id,
+    ]);
+
+    // Delete exercises
+    await con.query(`DELETE FROM program_exercises WHERE program_id = $1`, [
+      id,
+    ]);
+
+    // Delete downloads
+    await con.query(`DELETE FROM program_downloads WHERE program_id = $1`, [
+      id,
+    ]);
+
+    // Delete program
+    await con.query(`DELETE FROM training_programs WHERE program_id = $1`, [
+      id,
+    ]);
+
+    // Commit transaction
+    await con.query("COMMIT");
+
+    // Delete image from Cloudinary if it exists
+    const imageUrl = existingProgram.rows[0].image_url;
+    if (imageUrl && imageUrl.includes("cloudinary")) {
+      const publicId = imageUrl.split("/").pop().split(".")[0];
+      await cloudinary.uploader.destroy(`training_programs/${publicId}`);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Training program deleted successfully",
+    });
+  } catch (error) {
+    // Rollback transaction in case of error
+    await con.query("ROLLBACK");
+    console.error("Error deleting training program:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// Get featured training program - updated to use is_featured column
+export const getFeaturedTrainingProgram = async (req, res) => {
+  try {
+    // Query using is_featured column instead of joining with featured_programs table
+    const result = await con.query(`
+      SELECT * FROM training_programs 
+      WHERE is_featured = TRUE
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No featured program found",
+      });
+    }
+
+    // Get the program exercises
+    const programId = result.rows[0].program_id;
+    const exercisesResult = await con.query(
+      `SELECT * FROM program_exercises WHERE program_id = $1 ORDER BY exercise_order`,
+      [programId]
+    );
+
+    const program = {
+      ...result.rows[0],
+      exercises: exercisesResult.rows,
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: program,
+    });
+  } catch (error) {
+    console.error("Error getting featured program:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+// Set a program as featured - updated to use is_featured column
+export const setFeaturedProgram = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if program exists
+    const programExists = await con.query(
+      `SELECT 1 FROM training_programs WHERE program_id = $1`,
+      [id]
+    );
+
+    if (programExists.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Training program not found",
+      });
+    }
+
+    // Begin transaction
+    await con.query("BEGIN");
+
+    // First, remove featured status from all programs
+    await con.query(`UPDATE training_programs SET is_featured = FALSE`);
+
+    // Then set the new featured program
+    await con.query(
+      `UPDATE training_programs SET is_featured = TRUE WHERE program_id = $1`,
+      [id]
+    );
+
+    // Commit transaction
+    await con.query("COMMIT");
+
+    return res.status(200).json({
+      success: true,
+      message: "Program set as featured successfully",
+    });
+  } catch (error) {
+    // Rollback transaction in case of error
+    await con.query("ROLLBACK");
+    console.error("Error setting featured program:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+// Generate PDF for a program
+export const generateProgramPdf = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Get the program details with exercises
+    const programResult = await con.query(
+      `SELECT * FROM training_programs WHERE program_id = $1`,
+      [id]
+    );
+
+    if (programResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Training program not found",
+      });
+    }
+
+    // Get the program exercises
+    const exercisesResult = await con.query(
+      `SELECT * FROM program_exercises WHERE program_id = $1 ORDER BY exercise_order`,
+      [id]
+    );
+
+    const program = {
+      ...programResult.rows[0],
+      exercises: exercisesResult.rows,
+    };
+
+    // Generate PDF
+    const pdfUrl = await generatePDF(program);
+
+    return res.status(200).json({
+      success: true,
+      file_url: pdfUrl,
+    });
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate PDF",
+      error: error.message,
+    });
+  }
+};
+
+// Record program download
 export const recordProgramDownload = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    // First verify the program exists
-    const programCheck = await con.query(
-      "SELECT file_url FROM training_programs WHERE program_id = $1",
+    // Check if program exists
+    const programExists = await con.query(
+      `SELECT 1 FROM training_programs WHERE program_id = $1`,
       [id]
     );
 
-    if (programCheck.rows.length === 0) {
+    if (programExists.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Training program not found",
@@ -106,426 +590,69 @@ export const recordProgramDownload = async (req, res) => {
 
     // Record the download
     await con.query(
-      `INSERT INTO user_program_downloads (user_id, program_id)
-       VALUES ($1, $2)
-       ON CONFLICT (user_id, program_id) DO UPDATE 
-       SET downloaded_at = CURRENT_TIMESTAMP`,
-      [userId, id]
+      `INSERT INTO program_downloads(program_id, user_id) VALUES($1, $2)`,
+      [id, userId]
     );
 
-    // Return the file URL for download
-    res.status(200).json({
-      success: true,
-      message: "Download recorded successfully",
-      data: {
-        file_url: programCheck.rows[0].file_url,
-      },
-    });
-  } catch (error) {
-    console.error("Error recording program download:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error recording program download",
-      error: error.message,
-    });
-  }
-};
-
-// Create a new training program with image upload (admin only)
-export const createTrainingProgram = async (req, res) => {
-  try {
-    console.log("Creating new training program with data:", {
-      title: req.body.title,
-      hasFiles: !!req.files,
-      fileKeys: req.files ? Object.keys(req.files) : "none",
-    });
-
-    const {
-      title,
-      description,
-      goal_type,
-      difficulty,
-      duration,
-      frequency,
-      file_url,
-      featured,
-    } = req.body;
-
-    // Parse highlights from form data
-    let highlights = [];
-    for (const key in req.body) {
-      if (key.startsWith("highlights[")) {
-        const index = parseInt(key.match(/\[(\d+)\]/)[1]);
-        highlights[index] = req.body[key];
-      }
-    }
-
-    // Filter out empty highlights
-    highlights = highlights.filter((item) => item && item.trim() !== "");
-
-    // Validate required fields
-    if (!title || !description || !goal_type || !file_url) {
-      return res.status(400).json({
-        success: false,
-        message: "Title, description, goal_type, and file_url are required",
-      });
-    }
-
-    let image_url = req.body.image_url || "";
-
-    // Handle image upload if file is included
-    if (req.files && req.files.image) {
-      console.log("File upload detected:", req.files.image.name);
-
-      try {
-        const uploadedImage = req.files.image;
-        const uniqueFileName = `${uuidv4()}_${uploadedImage.name}`;
-
-        // Create uploads directory if it doesn't exist
-        const uploadsDir = path.join(__dirname, "../uploads");
-        console.log(`Using uploads directory: ${uploadsDir}`);
-
-        if (!fs.existsSync(uploadsDir)) {
-          console.log("Creating uploads directory");
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-
-        const imagePath = path.join(uploadsDir, uniqueFileName);
-        console.log(`Will save image to: ${imagePath}`);
-
-        // Move the uploaded file to our uploads directory
-        await uploadedImage.mv(imagePath);
-        console.log("File saved successfully");
-
-        // Set image URL to the file path that can be accessed via HTTP
-        image_url = `/uploads/${uniqueFileName}`;
-        console.log(`Image URL set to: ${image_url}`);
-      } catch (uploadError) {
-        console.error("Error processing uploaded file:", uploadError);
-        throw uploadError;
-      }
-    } else if (req.body.image_base64) {
-      console.log("Base64 image data detected");
-      // Handle base64 image data if provided
-      const base64Data = req.body.image_base64.replace(
-        /^data:image\/\w+;base64,/,
-        ""
-      );
-      const uniqueFileName = `${uuidv4()}.png`;
-
-      const uploadsDir = path.join(__dirname, "../uploads");
-      console.log(`Using uploads directory for base64: ${uploadsDir}`);
-
-      if (!fs.existsSync(uploadsDir)) {
-        console.log("Creating uploads directory");
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-
-      const imagePath = path.join(uploadsDir, uniqueFileName);
-      console.log(`Will save base64 image to: ${imagePath}`);
-
-      // Write the base64 data as a file
-      fs.writeFileSync(imagePath, base64Data, { encoding: "base64" });
-      console.log("Base64 file saved successfully");
-
-      // Set image URL to the file path
-      image_url = `/uploads/${uniqueFileName}`;
-      console.log(`Image URL set to: ${image_url}`);
-    } else {
-      console.log(
-        "No image file or base64 data provided, using URL:",
-        image_url
-      );
-    }
-
-    console.log("Inserting program into database with image_url:", image_url);
-    const result = await con.query(
-      `INSERT INTO training_programs 
-       (title, description, goal_type, difficulty, duration, frequency, image_url, file_url, featured, highlights)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING *`,
-      [
-        title,
-        description,
-        goal_type,
-        difficulty || "intermediate",
-        duration || "4 weeks",
-        frequency || "3 days/week",
-        image_url,
-        file_url,
-        featured === "true" || featured === true,
-        highlights || [],
-      ]
-    );
-
-    console.log(
-      "Program created successfully with ID:",
-      result.rows[0].program_id
-    );
-    res.status(201).json({
-      success: true,
-      message: "Training program created successfully",
-      data: result.rows[0],
-    });
-  } catch (error) {
-    console.error("Error creating training program:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error creating training program",
-      error: error.message,
-    });
-  }
-};
-
-// Update an existing training program with image handling (admin only)
-export const updateTrainingProgram = async (req, res) => {
-  try {
-    const { id } = req.params;
-    console.log(`Updating training program ${id} with data:`, {
-      title: req.body.title,
-      hasFiles: !!req.files,
-      fileKeys: req.files ? Object.keys(req.files) : "none",
-    });
-
-    const {
-      title,
-      description,
-      goal_type,
-      difficulty,
-      duration,
-      frequency,
-      file_url,
-      featured,
-    } = req.body;
-
-    // Parse highlights from form data
-    let highlights = [];
-    for (const key in req.body) {
-      if (key.startsWith("highlights[")) {
-        const index = parseInt(key.match(/\[(\d+)\]/)[1]);
-        highlights[index] = req.body[key];
-      }
-    }
-
-    // Filter out empty highlights
-    highlights = highlights.filter((item) => item && item.trim() !== "");
-
-    // Check if program exists
-    const programCheck = await con.query(
-      "SELECT * FROM training_programs WHERE program_id = $1",
+    // Generate PDF
+    const programResult = await con.query(
+      `SELECT * FROM training_programs WHERE program_id = $1`,
       [id]
     );
 
-    if (programCheck.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Training program not found",
-      });
-    }
-
-    let image_url = req.body.image_url || programCheck.rows[0].image_url;
-
-    // Handle image upload if file is included
-    if (req.files && req.files.image) {
-      console.log("File upload detected:", req.files.image.name);
-
-      try {
-        const uploadedImage = req.files.image;
-        const uniqueFileName = `${uuidv4()}_${uploadedImage.name}`;
-
-        // Create uploads directory if it doesn't exist
-        const uploadsDir = path.join(__dirname, "../uploads");
-        console.log(`Using uploads directory: ${uploadsDir}`);
-
-        if (!fs.existsSync(uploadsDir)) {
-          console.log("Creating uploads directory");
-          fs.mkdirSync(uploadsDir, { recursive: true });
-        }
-
-        const imagePath = path.join(uploadsDir, uniqueFileName);
-        console.log(`Will save image to: ${imagePath}`);
-
-        // Move the uploaded file to our uploads directory
-        await uploadedImage.mv(imagePath);
-        console.log("File saved successfully");
-
-        // Set image URL to the file path that can be accessed via HTTP
-        image_url = `/uploads/${uniqueFileName}`;
-        console.log(`Image URL set to: ${image_url}`);
-      } catch (uploadError) {
-        console.error("Error processing uploaded file:", uploadError);
-        throw uploadError;
-      }
-    } else if (req.body.image_base64) {
-      console.log("Base64 image data detected");
-      // Handle base64 image data if provided
-      const base64Data = req.body.image_base64.replace(
-        /^data:image\/\w+;base64,/,
-        ""
-      );
-      const uniqueFileName = `${uuidv4()}.png`;
-
-      const uploadsDir = path.join(__dirname, "../uploads");
-      console.log(`Using uploads directory for base64: ${uploadsDir}`);
-
-      if (!fs.existsSync(uploadsDir)) {
-        console.log("Creating uploads directory");
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-
-      const imagePath = path.join(uploadsDir, uniqueFileName);
-      console.log(`Will save base64 image to: ${imagePath}`);
-
-      // Write the base64 data as a file
-      fs.writeFileSync(imagePath, base64Data, { encoding: "base64" });
-      console.log("Base64 file saved successfully");
-
-      // Set image URL to the file path
-      image_url = `/uploads/${uniqueFileName}`;
-      console.log(`Image URL set to: ${image_url}`);
-    } else {
-      console.log(
-        "No new image provided, using existing or provided URL:",
-        image_url
-      );
-    }
-
-    console.log("Updating program in database with image_url:", image_url);
-    // Update the program
-    const result = await con.query(
-      `UPDATE training_programs 
-       SET title = COALESCE($1, title),
-           description = COALESCE($2, description),
-           goal_type = COALESCE($3, goal_type),
-           difficulty = COALESCE($4, difficulty),
-           duration = COALESCE($5, duration),
-           frequency = COALESCE($6, frequency),
-           image_url = $7,
-           file_url = COALESCE($8, file_url),
-           featured = COALESCE($9, featured),
-           highlights = $10,
-           updated_at = CURRENT_TIMESTAMP
-       WHERE program_id = $11
-       RETURNING *`,
-      [
-        title,
-        description,
-        goal_type,
-        difficulty,
-        duration,
-        frequency,
-        image_url,
-        file_url,
-        featured === "true" || featured === true,
-        highlights,
-        id,
-      ]
-    );
-
-    console.log(`Program ${id} updated successfully`);
-    res.status(200).json({
-      success: true,
-      message: "Training program updated successfully",
-      data: result.rows[0],
-    });
-  } catch (error) {
-    console.error("Error updating training program:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error updating training program",
-      error: error.message,
-    });
-  }
-};
-
-// Delete a training program (admin only)
-export const deleteTrainingProgram = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Check if program exists
-    const programCheck = await con.query(
-      "SELECT * FROM training_programs WHERE program_id = $1",
+    const exercisesResult = await con.query(
+      `SELECT * FROM program_exercises WHERE program_id = $1 ORDER BY exercise_order`,
       [id]
     );
 
-    if (programCheck.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Training program not found",
-      });
-    }
+    const program = {
+      ...programResult.rows[0],
+      exercises: exercisesResult.rows,
+    };
 
-    // Delete the program
-    await con.query("DELETE FROM training_programs WHERE program_id = $1", [
-      id,
-    ]);
+    // Generate PDF
+    const pdfUrl = await generatePDF(program);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "Training program deleted successfully",
+      message: "Program download recorded",
+      file_url: pdfUrl,
     });
   } catch (error) {
-    console.error("Error deleting training program:", error);
-    res.status(500).json({
+    console.error("Error recording download:", error);
+    return res.status(500).json({
       success: false,
-      message: "Error deleting training program",
+      message: "Server error",
       error: error.message,
     });
   }
 };
 
-// Get featured training program
-export const getFeaturedTrainingProgram = async (req, res) => {
-  try {
-    const result = await con.query(
-      "SELECT * FROM training_programs WHERE featured = true ORDER BY created_at DESC LIMIT 1"
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No featured training program found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: result.rows[0],
-    });
-  } catch (error) {
-    console.error("Error fetching featured training program:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching featured training program",
-      error: error.message,
-    });
-  }
-};
-
-// Get user's downloaded programs
+// Get user downloads
 export const getUserDownloads = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const result = await con.query(
-      `SELECT tp.*, ud.downloaded_at
-       FROM user_program_downloads ud
-       JOIN training_programs tp ON ud.program_id = tp.program_id
-       WHERE ud.user_id = $1
-       ORDER BY ud.downloaded_at DESC`,
+      `
+      SELECT p.*, pd.downloaded_at
+      FROM program_downloads pd
+      JOIN training_programs p ON pd.program_id = p.program_id
+      WHERE pd.user_id = $1
+      ORDER BY pd.downloaded_at DESC
+    `,
       [userId]
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: result.rows,
     });
   } catch (error) {
-    console.error("Error fetching user downloads:", error);
-    res.status(500).json({
+    console.error("Error getting user downloads:", error);
+    return res.status(500).json({
       success: false,
-      message: "Error fetching user downloads",
+      message: "Server error",
       error: error.message,
     });
   }

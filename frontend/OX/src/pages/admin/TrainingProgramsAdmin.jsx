@@ -1,127 +1,235 @@
 import React, { useState, useEffect } from "react";
-import { Typography, Button } from "antd";
+import { Tabs, Button, Typography, Spin, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { getFullImageUrl } from "../../utils/imageHelper";
-import { fetchTrainingPrograms } from "../../utils/trainingProgramsService";
+import api from "../../services/api";
 import ProgramsTable from "../../components/training-programs/ProgramsTable";
-import ProgramFormModal from "../../components/training-programs/ProgramFormModal";
+import ProgramCreationForm from "../../components/training-programs/ProgramCreationForm";
+import ProgramPreview from "../../components/training-programs/ProgramPreview";
+import PDFPreviewModal from "../../components/common/PDFPreviewModal";
 
 const { Title } = Typography;
 
 const TrainingProgramsAdmin = () => {
+  const [activeTab, setActiveTab] = useState("list");
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState("add");
+  const [submitting, setSubmitting] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState(null);
 
-  // Fetch programs on mount
-  useEffect(() => {
-    fetchProgramsData();
-  }, []);
-
-  const fetchProgramsData = async () => {
+  // Fetch all training programs
+  const fetchPrograms = async () => {
     setLoading(true);
     try {
-      const result = await fetchTrainingPrograms();
-
-      if (result.success) {
-        // Replace this entire mapping section
-        const processedPrograms = result.data.map((program) => {
-          // Check if image_url is valid before processing
-          if (
-            !program.image_url ||
-            program.image_url === "undefined" ||
-            program.image_url === "null"
-          ) {
-            return {
-              ...program,
-              original_image_url: null,
-              image_url: null,
-            };
-          }
-
-          // For Cloudinary URLs, don't process them further
-          if (program.image_url.includes("cloudinary.com")) {
-            return {
-              ...program,
-              original_image_url: program.image_url,
-            };
-          }
-
-          // For other URLs, process them with additional validation
-          try {
-            const fullImageUrl = getFullImageUrl(program.image_url);
-            // Validate the URL
-            new URL(fullImageUrl); // This will throw an error if invalid
-
-            return {
-              ...program,
-              original_image_url: program.image_url,
-              image_url: fullImageUrl,
-            };
-          } catch (error) {
-            console.warn(
-              `Invalid image URL for program ${program.program_id}: ${program.image_url}`
-            );
-            return {
-              ...program,
-              original_image_url: program.image_url,
-              image_url: null, // Use null for invalid URLs
-            };
-          }
-        });
-
-        setPrograms(processedPrograms);
-      }
+      const response = await api.trainingPrograms.getAll();
+      setPrograms(response.data.data);
+    } catch (error) {
+      console.error("Error fetching programs:", error);
+      message.error("Failed to load training programs");
     } finally {
       setLoading(false);
     }
   };
-  const handleAdd = () => {
-    setModalType("add");
+
+  useEffect(() => {
+    fetchPrograms();
+  }, []);
+
+  // Handle adding a new program
+  const handleAddNew = () => {
     setSelectedProgram(null);
-    setModalVisible(true);
+    setActiveTab("add");
   };
 
+  // Handle editing an existing program
   const handleEdit = (program) => {
-    setModalType("edit");
     setSelectedProgram(program);
-    setModalVisible(true);
+    setActiveTab("edit");
   };
 
-  const handleDelete = (programId) => {
-    setPrograms((prev) => prev.filter((p) => p.program_id !== programId));
+  // Handle deleting a program
+  const handleDelete = async (programId) => {
+    try {
+      await api.trainingPrograms.delete(programId);
+      message.success("Program deleted successfully");
+      fetchPrograms();
+    } catch (error) {
+      console.error("Error deleting program:", error);
+      message.error("Failed to delete program");
+    }
+  };
+
+  // Handle previewing a program
+  const handlePreview = (program) => {
+    setSelectedProgram(program);
+    setActiveTab("preview");
+  };
+
+  // Handle form submission (create or update)
+  // In TrainingProgramsAdmin.jsx, update the handleSubmit function:
+  const handleSubmit = async (formData) => {
+    setSubmitting(true);
+    try {
+      console.log("Submitting program data:", formData); // Log the data being sent
+
+      if (selectedProgram?.program_id) {
+        // Update existing program
+        await api.trainingPrograms.update(selectedProgram.program_id, formData);
+        message.success("Program updated successfully");
+      } else {
+        // Create new program
+        const response = await api.trainingPrograms.create(formData);
+        console.log("Create program response:", response); // Log the response
+        message.success("Program created successfully");
+      }
+
+      await fetchPrograms();
+      setActiveTab("list");
+    } catch (error) {
+      console.error("Error submitting program:", error);
+      console.error("Error response data:", error.response?.data); // Log the detailed error
+      console.error("Error status:", error.response?.status);
+
+      message.error(error.response?.data?.message || "Failed to save program");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Generate PDF for preview or download
+  const handleGeneratePdf = async (program) => {
+    try {
+      const response = await api.trainingPrograms.generatePdf(
+        program.program_id
+      );
+
+      if (response.data && response.data.pdf_url) {
+        setPdfUrl(response.data.pdf_url);
+        setPreviewVisible(true);
+      }
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      message.error("Failed to generate PDF");
+    }
+  };
+
+  // Handle PDF download
+  const handleDownload = (url) => {
+    if (!url) return;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `program-${selectedProgram?.program_id || "new"}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 16,
-        }}
-      >
-        <Title level={4}>Training Programs Management</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-          Add Program
-        </Button>
-      </div>
+    <div className="training-programs-admin">
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        tabBarExtraContent={
+          activeTab === "list" && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAddNew}
+            >
+              Add Program
+            </Button>
+          )
+        }
+        items={[
+          {
+            key: "list",
+            label: "Programs List",
+            children: (
+              <div>
+                <div className="mb-4">
+                  <Title level={4}>Training Programs Management</Title>
+                </div>
 
-      <ProgramsTable
-        programs={programs}
-        loading={loading}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+                <ProgramsTable
+                  programs={programs}
+                  loading={loading}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onPreview={handlePreview}
+                />
+              </div>
+            ),
+          },
+          {
+            key: "add",
+            label: "Create New Program",
+            children: (
+              <div>
+                <div className="mb-4">
+                  <Title level={4}>Create New Training Program</Title>
+                </div>
+
+                <ProgramCreationForm
+                  onSubmit={handleSubmit}
+                  loading={submitting}
+                />
+              </div>
+            ),
+          },
+          {
+            key: "edit",
+            label: "Edit Program",
+            disabled: !selectedProgram,
+            children: (
+              <div>
+                <div className="mb-4">
+                  <Title level={4}>Edit Training Program</Title>
+                </div>
+
+                {selectedProgram ? (
+                  <ProgramCreationForm
+                    initialValues={selectedProgram}
+                    onSubmit={handleSubmit}
+                    loading={submitting}
+                  />
+                ) : (
+                  <Spin size="large" />
+                )}
+              </div>
+            ),
+          },
+          {
+            key: "preview",
+            label: "Program Preview",
+            disabled: !selectedProgram,
+            children: (
+              <div>
+                <div className="mb-4">
+                  <Title level={4}>Program Preview</Title>
+                </div>
+
+                {selectedProgram ? (
+                  <ProgramPreview
+                    program={selectedProgram}
+                    onDownload={handleGeneratePdf}
+                    onPdfPreview={handleGeneratePdf}
+                  />
+                ) : (
+                  <Spin size="large" />
+                )}
+              </div>
+            ),
+          },
+        ]}
       />
 
-      <ProgramFormModal
-        visible={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        modalType={modalType}
-        selectedProgram={selectedProgram}
-        onSuccess={fetchProgramsData}
+      <PDFPreviewModal
+        visible={previewVisible}
+        url={pdfUrl}
+        onClose={() => setPreviewVisible(false)}
+        onDownload={() => handleDownload(pdfUrl)}
       />
     </div>
   );

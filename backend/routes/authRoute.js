@@ -105,11 +105,13 @@ import {
 import {
   getAllTrainingPrograms,
   getTrainingProgramById,
-  recordProgramDownload,
   createTrainingProgram,
   updateTrainingProgram,
   deleteTrainingProgram,
   getFeaturedTrainingProgram,
+  setFeaturedProgram,
+  generateProgramPdf,
+  recordProgramDownload,
   getUserDownloads,
 } from "../controllers/TrainingProgramController.js";
 
@@ -361,6 +363,7 @@ router.delete("/exercises/log/:userId/remove/:logId", removeExerciseLog);
 router.get("/training-programs", getAllTrainingPrograms);
 router.get("/training-programs/featured", getFeaturedTrainingProgram);
 router.get("/training-programs/:id", getTrainingProgramById);
+router.get("/training-programs/:id/pdf", generateProgramPdf);
 
 // Protected training program routes (require signin)
 router.post(
@@ -388,6 +391,12 @@ router.delete(
   requireSignIn,
   isAdmin,
   deleteTrainingProgram
+);
+router.put(
+  "/training-programs/:id/set-featured",
+  requireSignIn,
+  isAdmin,
+  setFeaturedProgram
 );
 
 export default router;
