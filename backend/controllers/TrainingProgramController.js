@@ -31,15 +31,17 @@ export const getAllTrainingPrograms = async (req, res) => {
 export const getTrainingProgramExercises = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Get exercises for the program
+
+    // Get exercises for the program, including workout day information
     const exercisesResult = await con.query(
-      `SELECT * FROM program_exercises 
-       WHERE program_id = $1 
-       ORDER BY exercise_order`,
+      `SELECT pe.*, pwd.workout_date, pwd.day_name
+       FROM program_exercises pe
+       LEFT JOIN program_workout_days pwd ON pe.workout_day_id = pwd.workout_day_id
+       WHERE pe.program_id = $1 
+       ORDER BY pwd.workout_date, pe.exercise_order`,
       [id]
     );
-    
+
     return res.status(200).json({
       success: true,
       data: {
@@ -56,7 +58,7 @@ export const getTrainingProgramExercises = async (req, res) => {
   }
 };
 
-// Get training program by ID
+// Get training program by ID with workout days
 export const getTrainingProgramById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -74,14 +76,45 @@ export const getTrainingProgramById = async (req, res) => {
       });
     }
 
-    // Get the program exercises
-    const exercisesResult = await con.query(
-      `SELECT * FROM program_exercises WHERE program_id = $1 ORDER BY exercise_order`,
+    // Get the workout days
+    const workoutDaysResult = await con.query(
+      `SELECT * FROM program_workout_days 
+       WHERE program_id = $1 
+       ORDER BY workout_date`,
       [id]
     );
 
+    // Get all exercises for this program (we'll organize them by workout day)
+    const exercisesResult = await con.query(
+      `SELECT pe.*, pwd.workout_date, pwd.day_name 
+       FROM program_exercises pe
+       LEFT JOIN program_workout_days pwd ON pe.workout_day_id = pwd.workout_day_id
+       WHERE pe.program_id = $1 
+       ORDER BY pwd.workout_date, pe.exercise_order`,
+      [id]
+    );
+
+    // Organize exercises by workout day
+    const workoutDays = {};
+    workoutDaysResult.rows.forEach((day) => {
+      workoutDays[day.workout_day_id] = {
+        ...day,
+        exercises: [],
+      };
+    });
+
+    // Add exercises to their respective workout days
+    exercisesResult.rows.forEach((exercise) => {
+      if (exercise.workout_day_id && workoutDays[exercise.workout_day_id]) {
+        workoutDays[exercise.workout_day_id].exercises.push(exercise);
+      }
+    });
+
+    // Create program object with workout days
     const program = {
       ...programResult.rows[0],
+      workout_days: Object.values(workoutDays),
+      // Keep the original exercises array for backwards compatibility
       exercises: exercisesResult.rows,
     };
 
@@ -99,7 +132,7 @@ export const getTrainingProgramById = async (req, res) => {
   }
 };
 
-// Create a new training program
+// Create a new training program with workout days
 export const createTrainingProgram = async (req, res) => {
   try {
     const {
@@ -109,6 +142,7 @@ export const createTrainingProgram = async (req, res) => {
       difficulty,
       duration,
       exercises = [],
+      workout_days = [], // New parameter for workout days
       frequency = "Not specified",
       highlights = null,
       image = null,
@@ -133,18 +167,6 @@ export const createTrainingProgram = async (req, res) => {
       // Format array properly for PostgreSQL
       formattedHighlights = `{${highlights.join(",")}}`;
     }
-
-    // Log the data you're trying to insert
-    console.log("Inserting program with data:", {
-      title,
-      description,
-      imageUrl,
-      goal_type,
-      difficulty,
-      duration,
-      frequency,
-      formattedHighlights,
-    });
 
     // Begin transaction
     await con.query("BEGIN");
@@ -179,13 +201,87 @@ export const createTrainingProgram = async (req, res) => {
 
     const programId = programResult.rows[0].program_id;
 
-    // Insert exercises if provided
-    if (exercises && exercises.length > 0) {
+    // Process workout days if provided
+    const workoutDayMap = {}; // To map workout day dates to their IDs
+
+    if (workout_days && workout_days.length > 0) {
+      for (const day of workout_days) {
+        // Insert workout day
+        const workoutDayResult = await con.query(
+          `INSERT INTO program_workout_days(
+            program_id, 
+            workout_date, 
+            day_name, 
+            notes
+          ) VALUES($1, $2, $3, $4) RETURNING *`,
+          [programId, day.workout_date, day.day_name || null, day.notes || null]
+        );
+
+        const workoutDayId = workoutDayResult.rows[0].workout_day_id;
+        workoutDayMap[day.workout_date] = workoutDayId;
+
+        // Insert exercises for this workout day if provided
+        if (day.exercises && day.exercises.length > 0) {
+          for (let i = 0; i < day.exercises.length; i++) {
+            const ex = day.exercises[i];
+            await con.query(
+              `INSERT INTO program_exercises(
+                program_id,
+                workout_day_id,
+                movement,
+                intensity_kg,
+                weight_used,
+                actual_rpe,
+                sets,
+                reps,
+                tempo,
+                rest,
+                coaches_notes,
+                exercise_order
+              ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+              [
+                programId,
+                workoutDayId,
+                ex.movement,
+                ex.intensity_kg || null,
+                ex.weight_used || null,
+                ex.actual_rpe || null,
+                ex.sets,
+                ex.reps,
+                ex.tempo || null,
+                ex.rest || null,
+                ex.coaches_notes || ex.notes || null,
+                i + 1, // exercise_order starts from 1
+              ]
+            );
+          }
+        }
+      }
+    }
+
+    // For backward compatibility - insert exercises without workout days if provided
+    // and no workout days were specified
+    if (exercises.length > 0 && workout_days.length === 0) {
+      // If no workout days were specified but exercises were provided,
+      // create a default workout day for these exercises
+      const defaultWorkoutDate = new Date();
+      const defaultWorkoutResult = await con.query(
+        `INSERT INTO program_workout_days(
+          program_id, 
+          workout_date, 
+          day_name
+        ) VALUES($1, $2, $3) RETURNING *`,
+        [programId, defaultWorkoutDate, "Default Workout"]
+      );
+
+      const defaultWorkoutDayId = defaultWorkoutResult.rows[0].workout_day_id;
+
       for (let i = 0; i < exercises.length; i++) {
         const ex = exercises[i];
         await con.query(
           `INSERT INTO program_exercises(
             program_id,
+            workout_day_id,
             movement,
             intensity_kg,
             weight_used,
@@ -196,9 +292,10 @@ export const createTrainingProgram = async (req, res) => {
             rest,
             coaches_notes,
             exercise_order
-          ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
           [
             programId,
+            defaultWorkoutDayId,
             ex.movement,
             ex.intensity || null,
             ex.weight_used || null,
@@ -234,7 +331,7 @@ export const createTrainingProgram = async (req, res) => {
   }
 };
 
-// Update a training program
+// Update a training program with workout days
 export const updateTrainingProgram = async (req, res) => {
   try {
     const { id } = req.params;
@@ -245,6 +342,7 @@ export const updateTrainingProgram = async (req, res) => {
       difficulty,
       duration,
       exercises = [],
+      workout_days = [], // New parameter for workout days
       frequency = null,
       highlights = null,
       image = null,
@@ -304,18 +402,108 @@ export const updateTrainingProgram = async (req, res) => {
       ]
     );
 
-    // Delete existing exercises
-    await con.query(`DELETE FROM program_exercises WHERE program_id = $1`, [
-      id,
-    ]);
+    // If workout days are provided, update them
+    if (workout_days && workout_days.length > 0) {
+      // Delete all existing workout days and exercises
+      await con.query(
+        `DELETE FROM program_workout_days WHERE program_id = $1`,
+        [id]
+      );
+      // Exercises will be deleted by cascade effect
 
-    // Insert updated exercises
-    if (exercises && exercises.length > 0) {
+      // Create new workout days and exercises
+      for (const day of workout_days) {
+        // Insert workout day
+        const workoutDayResult = await con.query(
+          `INSERT INTO program_workout_days(
+            program_id, 
+            workout_date, 
+            day_name, 
+            notes
+          ) VALUES($1, $2, $3, $4) RETURNING *`,
+          [id, day.workout_date, day.day_name || null, day.notes || null]
+        );
+
+        const workoutDayId = workoutDayResult.rows[0].workout_day_id;
+
+        // Insert exercises for this workout day
+        if (day.exercises && day.exercises.length > 0) {
+          for (let i = 0; i < day.exercises.length; i++) {
+            const ex = day.exercises[i];
+            await con.query(
+              `INSERT INTO program_exercises(
+                program_id,
+                workout_day_id,
+                movement,
+                intensity_kg,
+                weight_used,
+                actual_rpe,
+                sets,
+                reps,
+                tempo,
+                rest,
+                coaches_notes,
+                exercise_order
+              ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+              [
+                id,
+                workoutDayId,
+                ex.movement,
+                ex.intensity_kg || ex.intensity || null,
+                ex.weight_used || null,
+                ex.actual_rpe || null,
+                ex.sets,
+                ex.reps,
+                ex.tempo || null,
+                ex.rest || null,
+                ex.coaches_notes || ex.notes || null,
+                i + 1, // exercise_order starts from 1
+              ]
+            );
+          }
+        }
+      }
+    }
+    // For backward compatibility - if only exercises are provided (old format)
+    else if (exercises && exercises.length > 0) {
+      // Delete all existing exercises
+      await con.query(`DELETE FROM program_exercises WHERE program_id = $1`, [
+        id,
+      ]);
+
+      // Check if there are any workout days
+      const existingWorkoutDays = await con.query(
+        `SELECT workout_day_id FROM program_workout_days WHERE program_id = $1 LIMIT 1`,
+        [id]
+      );
+
+      let workoutDayId;
+
+      // If no workout days exist, create a default one
+      if (existingWorkoutDays.rows.length === 0) {
+        const defaultWorkoutDate = new Date();
+        const defaultWorkoutResult = await con.query(
+          `INSERT INTO program_workout_days(
+            program_id, 
+            workout_date, 
+            day_name
+          ) VALUES($1, $2, $3) RETURNING *`,
+          [id, defaultWorkoutDate, "Default Workout"]
+        );
+
+        workoutDayId = defaultWorkoutResult.rows[0].workout_day_id;
+      } else {
+        // Use the first existing workout day
+        workoutDayId = existingWorkoutDays.rows[0].workout_day_id;
+      }
+
+      // Insert exercises into the workout day
       for (let i = 0; i < exercises.length; i++) {
         const ex = exercises[i];
         await con.query(
           `INSERT INTO program_exercises(
             program_id,
+            workout_day_id,
             movement,
             intensity_kg,
             weight_used,
@@ -326,18 +514,19 @@ export const updateTrainingProgram = async (req, res) => {
             rest,
             coaches_notes,
             exercise_order
-          ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
           [
             id,
+            workoutDayId,
             ex.movement,
-            ex.intensity || null,
+            ex.intensity_kg || ex.intensity || null,
             ex.weight_used || null,
             ex.actual_rpe || null,
             ex.sets,
             ex.reps,
             ex.tempo || null,
             ex.rest || null,
-            ex.notes || null,
+            ex.coaches_notes || ex.notes || null,
             i + 1, // exercise_order starts from 1
           ]
         );
@@ -390,7 +579,12 @@ export const deleteTrainingProgram = async (req, res) => {
       id,
     ]);
 
-    // Delete exercises
+    // Delete workout days (will cascade delete exercises)
+    await con.query(`DELETE FROM program_workout_days WHERE program_id = $1`, [
+      id,
+    ]);
+
+    // Delete any exercises that might not be associated with workout days
     await con.query(`DELETE FROM program_exercises WHERE program_id = $1`, [
       id,
     ]);
@@ -424,7 +618,8 @@ export const deleteTrainingProgram = async (req, res) => {
   }
 };
 
-// Get featured training program - updated to use is_featured column
+// The remaining functions (getFeaturedProgram, setFeaturedProgram,
+// recordProgramDownload, getUserDownloads) can remain unchanged
 export const getFeaturedProgram = async (req, res) => {
   try {
     console.log("Fetching featured programs"); // Add this debugging line
@@ -452,7 +647,6 @@ export const getFeaturedProgram = async (req, res) => {
   }
 };
 
-// Set a program as featured - updated to use is_featured column
 export const setFeaturedProgram = async (req, res) => {
   try {
     const { id } = req.params;
@@ -501,7 +695,6 @@ export const setFeaturedProgram = async (req, res) => {
   }
 };
 
-// Record program download
 export const recordProgramDownload = async (req, res) => {
   try {
     const { id } = req.params;
@@ -541,7 +734,6 @@ export const recordProgramDownload = async (req, res) => {
   }
 };
 
-// Get user downloads
 export const getUserDownloads = async (req, res) => {
   try {
     const userId = req.user.id;

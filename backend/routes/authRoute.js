@@ -100,6 +100,14 @@ import {
   getUserExerciseLogs,
   logExercise,
   removeExerciseLog,
+  // New workout day functions
+  createWorkoutDay,
+  getWorkoutDays,
+  addExercisesToWorkoutDay,
+  getWorkoutDayExercises,
+  updateWorkoutDay,
+  deleteWorkoutDay,
+  updateWorkoutDayExercises,
 } from "../controllers/ExerciseController.js";
 
 import {
@@ -358,6 +366,21 @@ router.get("/exercises/muscle-groups", getMuscleGroups);
 router.get("/exercises/user/:userId", getUserExerciseLogs);
 router.post("/exercises/log/:userId", logExercise);
 router.delete("/exercises/log/:userId/remove/:logId", removeExerciseLog);
+
+// Workout Day Routes (NEW)
+router.post("/training-programs/:program_id/workout-days", createWorkoutDay);
+router.get("/training-programs/:program_id/workout-days", getWorkoutDays);
+router.post(
+  "/workout-days/:workout_day_id/exercises",
+  addExercisesToWorkoutDay
+);
+router.get("/workout-days/:workout_day_id/exercises", getWorkoutDayExercises);
+router.put("/workout-days/:workout_day_id", updateWorkoutDay);
+router.delete("/workout-days/:workout_day_id", deleteWorkoutDay);
+router.put(
+  "/workout-days/:workout_day_id/exercises",
+  updateWorkoutDayExercises
+);
 
 // Public training program routes
 router.get("/training-programs", getAllTrainingPrograms);
