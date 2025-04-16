@@ -1,7 +1,11 @@
 import React, { useState } from "react";
-import { Form, Upload, message, Input } from "antd";
+import { Upload, message, Button, Spin } from "antd";
 import { PlusOutlined, LoadingOutlined } from "@ant-design/icons";
-import { getFullImageUrl } from "../../utils/imageHelper";
+
+// Cloudinary configuration
+const CLOUD_NAME = "dywgqhmpo";
+const UPLOAD_PRESET = "OX-Fit"; // This should be your unsigned upload preset
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 
 const ImageUploader = ({
   imageUrl,
@@ -11,127 +15,140 @@ const ImageUploader = ({
   form,
 }) => {
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  // Handle direct upload to Cloudinary
+  const uploadToCloudinary = async (file) => {
+    try {
+      setLoading(true);
+      setProgress(10);
+
+      // Create the FormData object to send to Cloudinary
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      formData.append("folder", "training-programs");
+
+      setProgress(30);
+      console.log("Uploading directly to Cloudinary...");
+
+      // Upload directly to Cloudinary API
+      const response = await fetch(CLOUDINARY_URL, {
+        method: "POST",
+        body: formData,
+      });
+
+      setProgress(70);
+
+      if (!response.ok) {
+        throw new Error(`Cloudinary upload failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      setProgress(100);
+
+      // Get the secure URL from the response
+      const cloudinaryUrl = result.secure_url;
+      console.log("Cloudinary upload successful:", cloudinaryUrl);
+
+      // Update the form with the URL
+      setImageUrl(cloudinaryUrl);
+      form.setFieldsValue({ image: cloudinaryUrl });
+
+      // Update file list for UI display
+      setFileList([
+        {
+          uid: `-${Date.now()}`,
+          name: file.name || "image.jpg",
+          status: "done",
+          url: cloudinaryUrl,
+        },
+      ]);
+
+      message.success("Image uploaded successfully!");
+      return cloudinaryUrl;
+    } catch (error) {
+      console.error("Error uploading to Cloudinary:", error);
+      message.error("Failed to upload image: " + error.message);
+      return null;
+    } finally {
+      setLoading(false);
+      setProgress(0);
+    }
+  };
 
   const beforeUpload = (file) => {
+    // Validate file type
     const isJpgOrPng = file.type === "image/jpeg" || file.type === "image/png";
     if (!isJpgOrPng) {
-      message.error("You can only upload JPG/PNG file!");
+      message.error("You can only upload JPG/PNG files!");
       return Upload.LIST_IGNORE;
     }
 
+    // Validate file size
     const isLt2M = file.size / 1024 / 1024 < 2;
     if (!isLt2M) {
       message.error("Image must be smaller than 2MB!");
       return Upload.LIST_IGNORE;
     }
 
-    setLoading(true);
+    // Upload the file to Cloudinary
+    uploadToCloudinary(file);
 
-    // Convert to base64 for preview and submission
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      const base64 = reader.result;
-      setImageUrl(base64);
-      form.setFieldsValue({ image: base64 });
-      setLoading(false);
-
-      setFileList([
-        {
-          uid: `-${Date.now()}`,
-          name: file.name,
-          status: "done",
-          originFileObj: file,
-        },
-      ]);
-    };
-
-    return false; // prevent auto upload
+    // Return false to prevent default upload behavior
+    return false;
   };
 
   const handleChange = ({ fileList: newFileList }) => {
-    setFileList(newFileList);
+    // Only update file list if not currently uploading
+    if (!loading) {
+      setFileList(newFileList);
+    }
   };
 
   const uploadButton = (
     <div>
       {loading ? <LoadingOutlined /> : <PlusOutlined />}
-      <div style={{ marginTop: 8 }}>Upload</div>
+      <div style={{ marginTop: 8 }}>
+        {loading ? `Uploading ${progress}%` : "Upload"}
+      </div>
     </div>
   );
 
   return (
     <>
-      <Form.Item
-        label="Program Image"
-        name="image_upload"
-        rules={[
-          {
-            required: !form.getFieldValue("image_url_input"),
-            message: "Please upload a program image or provide a URL",
-          },
-        ]}
+      <Upload
+        name="image"
+        listType="picture-card"
+        className="avatar-uploader"
+        showUploadList={!!fileList.length}
+        fileList={fileList}
+        beforeUpload={beforeUpload}
+        onChange={handleChange}
+        onRemove={() => {
+          setFileList([]);
+          setImageUrl("");
+          form.setFieldsValue({ image: null });
+        }}
       >
-        <Upload
-          name="image"
-          listType="picture-card"
-          showUploadList={true}
-          beforeUpload={beforeUpload}
-          onChange={handleChange}
-          fileList={fileList}
-          customRequest={({ onSuccess }) => {
-            // Mock the upload success since we handle manually
-            setTimeout(() => onSuccess("ok"), 0);
-          }}
-          onRemove={() => {
-            setFileList([]);
-            setImageUrl("");
-            form.setFieldsValue({ image: null });
-          }}
-        >
-          {fileList.length === 0 && uploadButton}
-        </Upload>
-      </Form.Item>
+        {fileList.length >= 1 ? null : uploadButton}
+      </Upload>
 
-      {imageUrl && (
+      {loading && (
         <div style={{ marginTop: 8 }}>
-          <img
-            src={
-              imageUrl.startsWith("data:")
-                ? imageUrl
-                : getFullImageUrl(imageUrl)
-            }
-            alt="Preview"
-            style={{ maxWidth: "100%", maxHeight: 200 }}
-            onError={(e) => {
-              console.error("Preview image failed to load:", imageUrl);
-              e.target.onerror = null;
-              e.target.src =
-                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='200' viewBox='0 0 400 200'%3E%3Crect width='400' height='200' fill='%23f0f0f0'/%3E%3Ctext x='50%25' y='50%25' font-size='16' text-anchor='middle' dy='.3em' fill='%23999'%3EImage Not Found%3C/text%3E%3C/svg%3E";
-            }}
-          />
+          <Spin size="small" />
+          <span style={{ marginLeft: 8 }}>
+            Uploading to Cloudinary: {progress}%
+          </span>
         </div>
       )}
 
-      <Form.Item
-        name="image_url_input"
-        label="Or Enter Image URL"
-        rules={[
-          {
-            type: "url",
-            message: "Please enter a valid URL",
-          },
-          {
-            required: fileList.length === 0,
-            message: "Please upload an image or provide a URL",
-          },
-        ]}
-      >
-        <Input
-          placeholder="Enter image URL directly"
-          disabled={fileList.length > 0}
-        />
-      </Form.Item>
+      {imageUrl && !loading && (
+        <div style={{ marginTop: 8 }}>
+          <span className="text-xs text-gray-500">Image URL: </span>
+          <span className="text-xs text-gray-400 break-all">{imageUrl}</span>
+        </div>
+      )}
     </>
   );
 };

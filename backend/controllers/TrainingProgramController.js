@@ -1,6 +1,4 @@
 import con from "../db.js";
-import cloudinary from "../utils/cloudinary.js";
-import generatePDF from "../utils/pdfGenerator.js";
 
 // Get all training programs
 export const getAllTrainingPrograms = async (req, res) => {
@@ -95,21 +93,8 @@ export const createTrainingProgram = async (req, res) => {
       });
     }
 
-    let imageUrl = null;
-
-    if (image && image.startsWith("data:image")) {
-      try {
-        console.log("Processing base64 image...");
-        const uploadResult = await cloudinary.uploader.upload(image, {
-          folder: "training_programs",
-        });
-        imageUrl = uploadResult.secure_url;
-        console.log("Image uploaded successfully:", imageUrl);
-      } catch (cloudinaryError) {
-        console.error("Cloudinary upload error:", cloudinaryError);
-        // Continue without image if upload fails
-      }
-    }
+    // Use image URL directly from request
+    const imageUrl = image;
 
     let formattedHighlights = highlights;
     if (highlights && typeof highlights === "string") {
@@ -131,22 +116,6 @@ export const createTrainingProgram = async (req, res) => {
       frequency,
       formattedHighlights,
     });
-
-    // Upload image if provided
-    if (req.body.image && req.body.image.startsWith("data:image")) {
-      try {
-        console.log("Attempting to upload image to Cloudinary...");
-        const uploadResult = await cloudinary.uploader.upload(req.body.image, {
-          folder: "training_programs",
-        });
-        imageUrl = uploadResult.secure_url;
-        console.log("Image uploaded successfully:", imageUrl);
-      } catch (cloudinaryError) {
-        console.error("Cloudinary upload error:", cloudinaryError);
-        // Continue without image if upload fails
-        imageUrl = null;
-      }
-    }
 
     // Begin transaction
     await con.query("BEGIN");
@@ -249,6 +218,7 @@ export const updateTrainingProgram = async (req, res) => {
       exercises = [],
       frequency = null,
       highlights = null,
+      image = null,
     } = req.body;
 
     // Check if program exists
@@ -264,28 +234,14 @@ export const updateTrainingProgram = async (req, res) => {
       });
     }
 
-    let imageUrl = existingProgram.rows[0].image_url;
+    // Use existing image or new one if provided
+    const imageUrl = image || existingProgram.rows[0].image_url;
 
     let formattedHighlights = highlights;
     if (highlights && typeof highlights === "string") {
       formattedHighlights = `{${highlights}}`;
     } else if (Array.isArray(highlights)) {
       formattedHighlights = `{${highlights.join(",")}}`;
-    }
-
-    // Upload new image if provided
-    if (req.body.image && req.body.image !== imageUrl) {
-      // Delete old image if it exists and is from Cloudinary
-      if (imageUrl && imageUrl.includes("cloudinary")) {
-        const publicId = imageUrl.split("/").pop().split(".")[0];
-        await cloudinary.uploader.destroy(`training_programs/${publicId}`);
-      }
-
-      // Upload new image
-      const uploadResult = await cloudinary.uploader.upload(req.body.image, {
-        folder: "training_programs",
-      });
-      imageUrl = uploadResult.secure_url;
     }
 
     // Begin transaction
@@ -423,13 +379,6 @@ export const deleteTrainingProgram = async (req, res) => {
     // Commit transaction
     await con.query("COMMIT");
 
-    // Delete image from Cloudinary if it exists
-    const imageUrl = existingProgram.rows[0].image_url;
-    if (imageUrl && imageUrl.includes("cloudinary")) {
-      const publicId = imageUrl.split("/").pop().split(".")[0];
-      await cloudinary.uploader.destroy(`training_programs/${publicId}`);
-    }
-
     return res.status(200).json({
       success: true,
       message: "Training program deleted successfully",
@@ -447,7 +396,6 @@ export const deleteTrainingProgram = async (req, res) => {
 };
 
 // Get featured training program - updated to use is_featured column
-
 export const getFeaturedProgram = async (req, res) => {
   try {
     console.log("Fetching featured programs"); // Add this debugging line
@@ -523,51 +471,6 @@ export const setFeaturedProgram = async (req, res) => {
     });
   }
 };
-// Generate PDF for a program
-export const generateProgramPdf = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Get the program details with exercises
-    const programResult = await con.query(
-      `SELECT * FROM training_programs WHERE program_id = $1`,
-      [id]
-    );
-
-    if (programResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Training program not found",
-      });
-    }
-
-    // Get the program exercises
-    const exercisesResult = await con.query(
-      `SELECT * FROM program_exercises WHERE program_id = $1 ORDER BY exercise_order`,
-      [id]
-    );
-
-    const program = {
-      ...programResult.rows[0],
-      exercises: exercisesResult.rows,
-    };
-
-    // Generate PDF
-    const pdfUrl = await generatePDF(program);
-
-    return res.status(200).json({
-      success: true,
-      file_url: pdfUrl,
-    });
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to generate PDF",
-      error: error.message,
-    });
-  }
-};
 
 // Record program download
 export const recordProgramDownload = async (req, res) => {
@@ -594,29 +497,10 @@ export const recordProgramDownload = async (req, res) => {
       [id, userId]
     );
 
-    // Generate PDF
-    const programResult = await con.query(
-      `SELECT * FROM training_programs WHERE program_id = $1`,
-      [id]
-    );
-
-    const exercisesResult = await con.query(
-      `SELECT * FROM program_exercises WHERE program_id = $1 ORDER BY exercise_order`,
-      [id]
-    );
-
-    const program = {
-      ...programResult.rows[0],
-      exercises: exercisesResult.rows,
-    };
-
-    // Generate PDF
-    const pdfUrl = await generatePDF(program);
-
     return res.status(200).json({
       success: true,
       message: "Program download recorded",
-      file_url: pdfUrl,
+      file_url: null, // No longer generating PDF
     });
   } catch (error) {
     console.error("Error recording download:", error);

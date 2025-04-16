@@ -66,32 +66,23 @@ const TrainingProgramsAdmin = () => {
     setActiveTab("preview");
   };
 
-  // Handle form submission (create or update)
-  // In TrainingProgramsAdmin.jsx, update the handleSubmit function:
+  // Fix the handleSubmit function in TrainingProgramsAdmin.jsx
   const handleSubmit = async (formData) => {
     setSubmitting(true);
     try {
-      console.log("Submitting program data:", formData); // Log the data being sent
+      console.log("Form submission successful:", formData);
 
-      if (selectedProgram?.program_id) {
-        // Update existing program
-        await api.trainingPrograms.update(selectedProgram.program_id, formData);
-        message.success("Program updated successfully");
-      } else {
-        // Create new program
-        const response = await api.trainingPrograms.create(formData);
-        console.log("Create program response:", response); // Log the response
-        message.success("Program created successfully");
-      }
+      // The API call was already made in ProgramCreationForm.jsx
+      // No need to make another API call here
 
-      await fetchPrograms();
-      setActiveTab("list");
+      // Just handle UI updates
+      message.success("Program saved successfully");
+      fetchPrograms(); // Refresh the programs list
+      setActiveTab("list"); // Return to list view
+      setSelectedProgram(null); // Clear selected program
     } catch (error) {
-      console.error("Error submitting program:", error);
-      console.error("Error response data:", error.response?.data); // Log the detailed error
-      console.error("Error status:", error.response?.status);
-
-      message.error(error.response?.data?.message || "Failed to save program");
+      console.error("Error in admin component:", error);
+      message.error("An error occurred in the admin component");
     } finally {
       setSubmitting(false);
     }

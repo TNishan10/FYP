@@ -110,12 +110,10 @@ import {
   deleteTrainingProgram,
   getFeaturedProgram,
   setFeaturedProgram,
-  generateProgramPdf,
+  // REMOVED: generateProgramPdf
   recordProgramDownload,
   getUserDownloads,
 } from "../controllers/TrainingProgramController.js";
-
-import { uploadImage } from "../utils/cloudinary.js";
 
 import crypto from "crypto";
 import con from "../server.js";
@@ -364,9 +362,10 @@ router.delete("/exercises/log/:userId/remove/:logId", removeExerciseLog);
 // Public training program routes
 router.get("/training-programs", getAllTrainingPrograms);
 router.get("/training-programs/featured", getFeaturedProgram);
-
 router.get("/training-programs/:id", getTrainingProgramById);
-router.get("/training-programs/:id/pdf", generateProgramPdf);
+
+// REMOVED: PDF generation route
+// router.get("/training-programs/:id/pdf", generateProgramPdf);
 
 // Protected training program routes (require signin)
 router.post(
@@ -402,34 +401,5 @@ router.put(
   setFeaturedProgram
 );
 
-// Then add this route with your other routes
-router.post("/upload-image", async (req, res) => {
-  try {
-    const { image } = req.body;
-
-    if (!image) {
-      return res.status(400).json({
-        success: false,
-        message: "No image provided",
-      });
-    }
-
-    // Use your existing uploadImage utility function
-    const result = await uploadImage(image, "training-programs");
-
-    // Return success with image URL
-    return res.status(200).json({
-      success: true,
-      imageUrl: result.secure_url,
-    });
-  } catch (error) {
-    console.error("Error uploading to Cloudinary:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to upload image",
-      error: error.message,
-    });
-  }
-});
 
 export default router;
