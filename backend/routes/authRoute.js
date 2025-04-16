@@ -110,7 +110,7 @@ import {
   deleteTrainingProgram,
   getFeaturedProgram,
   setFeaturedProgram,
-  // REMOVED: generateProgramPdf
+  getTrainingProgramExercises,
   recordProgramDownload,
   getUserDownloads,
 } from "../controllers/TrainingProgramController.js";
@@ -363,6 +363,8 @@ router.delete("/exercises/log/:userId/remove/:logId", removeExerciseLog);
 router.get("/training-programs", getAllTrainingPrograms);
 router.get("/training-programs/featured", getFeaturedProgram);
 router.get("/training-programs/:id", getTrainingProgramById);
+// Add this new route to fetch exercises for a specific program
+router.get("/training-programs/:id/exercises", getTrainingProgramExercises);
 
 // REMOVED: PDF generation route
 // router.get("/training-programs/:id/pdf", generateProgramPdf);
@@ -400,6 +402,5 @@ router.put(
   isAdmin,
   setFeaturedProgram
 );
-
 
 export default router;

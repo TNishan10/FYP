@@ -93,9 +93,9 @@ const ImageUploader = ({ value, onChange }) => {
         showUploadList={false}
         beforeUpload={beforeUpload}
       >
-        <Button icon={loading ? <LoadingOutlined /> : <UploadOutlined />}>
+        {/* <Button icon={loading ? <LoadingOutlined /> : <UploadOutlined />}>
           {imageUrl ? "Change Image" : "Upload Image"}
-        </Button>
+        </Button> */}
       </Upload>
     </div>
   );

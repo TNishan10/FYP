@@ -27,6 +27,35 @@ export const getAllTrainingPrograms = async (req, res) => {
   }
 };
 
+// Get exercises for a specific training program
+export const getTrainingProgramExercises = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get exercises for the program
+    const exercisesResult = await con.query(
+      `SELECT * FROM program_exercises 
+       WHERE program_id = $1 
+       ORDER BY exercise_order`,
+      [id]
+    );
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        exercises: exercisesResult.rows,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching program exercises:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
 // Get training program by ID
 export const getTrainingProgramById = async (req, res) => {
   try {
