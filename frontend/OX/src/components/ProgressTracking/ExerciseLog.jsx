@@ -1,90 +1,48 @@
 import React, { useState, useEffect } from "react";
-import { Card, Button, Input, Table, Empty, Form, notification } from "antd";
 import {
-  SearchOutlined,
-  DeleteOutlined,
-  BarChartOutlined,
-} from "@ant-design/icons";
+  Card,
+  Button,
+  Input,
+  Table,
+  Empty,
+  Form,
+  notification,
+  Select,
+  InputNumber,
+  Space,
+} from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
 import axios from "axios";
 import dayjs from "dayjs";
-import ExerciseModal from "./ExerciseModal";
 
 const API_URL = "http://localhost:8000/api/v1/auth";
+
+// Static muscle groups list
+const MUSCLE_GROUPS = [
+  "Chest",
+  "Back",
+  "Arms",
+  "Shoulder",
+  "Forearms",
+  "Neck",
+  "Abs",
+  "Legs",
+];
 
 const ExerciseLog = ({ userId, selectedDate, token }) => {
   const [exerciseForm] = Form.useForm();
 
-  // States for exercise tracking with proper initialization
-  const [exerciseList, setExerciseList] = useState([]);
+  // States for exercise tracking
   const [userExercises, setUserExercises] = useState([]);
-  const [exerciseModalVisible, setExerciseModalVisible] = useState(false);
-  const [selectedExercise, setSelectedExercise] = useState(null);
-  const [muscleGroups, setMuscleGroups] = useState([]);
-  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState("all");
-  const [exerciseSearchQuery, setExerciseSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedMuscleGroup, setSelectedMuscleGroup] = useState(null);
 
   // Effect to fetch data on mount
   useEffect(() => {
     if (userId) {
       fetchUserExercises();
-      fetchExerciseList();
-      fetchMuscleGroups();
     }
   }, [userId, selectedDate]);
-
-  // Effect to refetch exercises when muscle group filter changes
-  useEffect(() => {
-    if (userId) {
-      fetchExerciseList();
-    }
-  }, [selectedMuscleGroup]);
-
-  // Fetch list of muscle groups
-  const fetchMuscleGroups = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/exercises/muscle-groups`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.data.success) {
-        setMuscleGroups(response.data.data.muscle_groups || []);
-      }
-    } catch (error) {
-      console.error("Error fetching muscle groups:", error);
-      setMuscleGroups([]);
-    }
-  };
-
-  // Fetch exercise list
-  const fetchExerciseList = async () => {
-    try {
-      setLoading(true);
-      const params = {};
-
-      if (selectedMuscleGroup !== "all") {
-        params.muscle_group = selectedMuscleGroup;
-      }
-
-      const response = await axios.get(`${API_URL}/exercises/list`, {
-        params,
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.data.success) {
-        setExerciseList(
-          Array.isArray(response.data.data) ? response.data.data : []
-        );
-      } else {
-        setExerciseList([]);
-      }
-    } catch (error) {
-      console.error("Error fetching exercise list:", error);
-      setExerciseList([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Fetch user exercises for a date
   const fetchUserExercises = async () => {
@@ -99,7 +57,9 @@ const ExerciseLog = ({ userId, selectedDate, token }) => {
 
       if (response.data.success) {
         setUserExercises(
-          Array.isArray(response.data.data) ? response.data.data : []
+          Array.isArray(response.data.data.exercises)
+            ? response.data.data.exercises
+            : []
         );
       } else {
         setUserExercises([]);
@@ -112,23 +72,19 @@ const ExerciseLog = ({ userId, selectedDate, token }) => {
     }
   };
 
-  // Log an exercise
-  const logExercise = async (values) => {
+  // Log exercise function
+  const handleLogExercise = async (values) => {
     try {
-      if (!selectedExercise) {
-        notification.error({
-          message: "No Exercise Selected",
-          description: "Please select an exercise to log",
-        });
-        return;
-      }
+      setLoading(true);
 
       const payload = {
-        exercise_id: selectedExercise.exercise_id,
+        exercise_name: values.exercise_name, // Changed from exercise_id to exercise_name
+        muscle_group: values.muscle_group,
         date: selectedDate.format("YYYY-MM-DD"),
         sets: values.sets,
         reps: values.reps,
         weight: values.weight,
+        rest: values.rest,
         notes: values.notes || "",
       };
 
@@ -141,14 +97,11 @@ const ExerciseLog = ({ userId, selectedDate, token }) => {
       if (response.data.success) {
         notification.success({
           message: "Exercise Logged",
-          description: `${selectedExercise.name} has been added to your exercise log.`,
+          description: "Your exercise has been added to your log.",
         });
 
-        // Refresh user exercises
+        // Refresh user exercises and reset form
         fetchUserExercises();
-
-        // Close modal and reset form
-        setExerciseModalVisible(false);
         exerciseForm.resetFields();
       }
     } catch (error) {
@@ -157,6 +110,8 @@ const ExerciseLog = ({ userId, selectedDate, token }) => {
         message: "Failed to Log Exercise",
         description: "There was a problem logging your exercise.",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -184,16 +139,6 @@ const ExerciseLog = ({ userId, selectedDate, token }) => {
         description: "There was a problem removing the exercise from your log.",
       });
     }
-  };
-
-  // Filter exercises by search query
-  const getFilteredExercises = () => {
-    if (!Array.isArray(exerciseList)) return [];
-    if (!exerciseSearchQuery) return exerciseList;
-
-    return exerciseList.filter((exercise) =>
-      exercise.name.toLowerCase().includes(exerciseSearchQuery.toLowerCase())
-    );
   };
 
   // Exercise log columns for table
@@ -231,6 +176,13 @@ const ExerciseLog = ({ userId, selectedDate, token }) => {
       render: (text) => (text ? `${text} kg` : "Bodyweight"),
     },
     {
+      title: "Rest",
+      dataIndex: "rest",
+      key: "rest",
+      width: 100,
+      render: (text) => (text ? `${text} sec` : "-"),
+    },
+    {
       title: "Action",
       key: "action",
       width: 80,
@@ -245,15 +197,7 @@ const ExerciseLog = ({ userId, selectedDate, token }) => {
     },
   ];
 
-  // Make sure we have valid arrays for Table components
-  const filteredExercises = getFilteredExercises();
   const safeUserExercises = Array.isArray(userExercises) ? userExercises : [];
-
-  // Close the exercise modal and reset form
-  const handleCloseExerciseModal = () => {
-    setExerciseModalVisible(false);
-    exerciseForm.resetFields();
-  };
 
   return (
     <div className="p-6">
@@ -268,7 +212,7 @@ const ExerciseLog = ({ userId, selectedDate, token }) => {
         }
         className="mb-6"
       >
-        {loading ? (
+        {loading && userExercises.length === 0 ? (
           <div className="flex justify-center items-center h-32">
             <div>Loading exercises...</div>
           </div>
@@ -286,100 +230,112 @@ const ExerciseLog = ({ userId, selectedDate, token }) => {
         )}
       </Card>
 
-      <Card title="Add Exercise" className="mb-6">
-        <div className="mb-4">
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Button
-              type={selectedMuscleGroup === "all" ? "primary" : "default"}
-              onClick={() => setSelectedMuscleGroup("all")}
+      <Card title="Log a New Exercise" className="mb-6">
+        <Form
+          form={exerciseForm}
+          layout="vertical"
+          onFinish={handleLogExercise}
+          initialValues={{
+            sets: 3,
+            reps: 10,
+            rest: 60,
+          }}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Form.Item
+              name="muscle_group"
+              label="Muscle Group"
+              rules={[
+                { required: true, message: "Please select a muscle group" },
+              ]}
             >
-              All
+              <Select
+                placeholder="Select muscle group"
+                onChange={(value) => setSelectedMuscleGroup(value)}
+                options={MUSCLE_GROUPS.map((group) => ({
+                  label: group,
+                  value: group,
+                }))}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="exercise_name"
+              label="Exercise Name"
+              rules={[
+                { required: true, message: "Please enter the exercise name" },
+              ]}
+            >
+              <Input placeholder="Enter exercise name" maxLength={100} />
+            </Form.Item>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Form.Item
+              label="Sets"
+              name="sets"
+              rules={[
+                { required: true, message: "Please enter number of sets" },
+              ]}
+            >
+              <InputNumber min={1} max={100} style={{ width: "100%" }} />
+            </Form.Item>
+
+            <Form.Item
+              label="Reps"
+              name="reps"
+              rules={[
+                { required: true, message: "Please enter number of reps" },
+              ]}
+            >
+              <InputNumber min={1} max={1000} style={{ width: "100%" }} />
+            </Form.Item>
+
+            <Form.Item
+              label="Weight (kg)"
+              name="weight"
+              tooltip="Leave empty for bodyweight exercise"
+            >
+              <InputNumber
+                min={0}
+                max={1000}
+                step={2.5}
+                style={{ width: "100%" }}
+                placeholder="Weight in kg"
+              />
+            </Form.Item>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Form.Item
+              label="Rest Time (seconds)"
+              name="rest"
+              tooltip="Rest time between sets"
+            >
+              <InputNumber
+                min={0}
+                max={600}
+                step={5}
+                style={{ width: "100%" }}
+                placeholder="Rest time in seconds"
+              />
+            </Form.Item>
+
+            <Form.Item label="Notes" name="notes">
+              <Input.TextArea
+                rows={1}
+                placeholder="Any notes about this exercise..."
+              />
+            </Form.Item>
+          </div>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              Log Exercise
             </Button>
-
-            {muscleGroups.map((group) => (
-              <Button
-                key={group}
-                type={selectedMuscleGroup === group ? "primary" : "default"}
-                onClick={() => setSelectedMuscleGroup(group)}
-              >
-                {group}
-              </Button>
-            ))}
-          </div>
-
-          <Input
-            placeholder="Search for exercises..."
-            value={exerciseSearchQuery}
-            onChange={(e) => setExerciseSearchQuery(e.target.value)}
-            prefix={<SearchOutlined />}
-            className="mb-4"
-          />
-        </div>
-
-        {loading ? (
-          <div className="flex justify-center items-center h-32">
-            <div>Loading exercises...</div>
-          </div>
-        ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <Table
-              dataSource={filteredExercises}
-              rowKey={(record) =>
-                record.exercise_id || record.id || Math.random().toString()
-              }
-              pagination={{ pageSize: 5 }}
-              size="small"
-            >
-              <Table.Column
-                title="Exercise"
-                dataIndex="name"
-                key="name"
-                render={(text, record) => (
-                  <div>
-                    <div className="font-medium">{text || "N/A"}</div>
-                    <div className="text-xs text-gray-500">
-                      {record.muscle_group || "Unknown"}
-                    </div>
-                  </div>
-                )}
-              />
-              <Table.Column
-                title="Equipment"
-                dataIndex="equipment"
-                key="equipment"
-                width={150}
-                render={(text) => text || "Bodyweight"}
-              />
-              <Table.Column
-                title="Action"
-                key="action"
-                width={100}
-                render={(_, record) => (
-                  <Button
-                    type="primary"
-                    size="small"
-                    onClick={() => {
-                      setSelectedExercise(record);
-                      setExerciseModalVisible(true);
-                    }}
-                  >
-                    Log
-                  </Button>
-                )}
-              />
-            </Table>
-          </div>
-        )}
+          </Form.Item>
+        </Form>
       </Card>
-
-      {/* Use the ExerciseModal component instead of inline modal */}
-      <ExerciseModal
-        visible={exerciseModalVisible}
-        onCancel={handleCloseExerciseModal}
-        onSubmit={logExercise}
-        form={exerciseForm}
-        selectedExercise={selectedExercise}
-      />
     </div>
   );
 };

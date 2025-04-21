@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Form, InputNumber, Button, Input, Tag } from "antd";
+import { Modal, Form, Input, InputNumber, Button } from "antd";
 
 const ExerciseModal = ({
   visible,
@@ -10,58 +10,83 @@ const ExerciseModal = ({
 }) => {
   return (
     <Modal
-      title={`Log ${selectedExercise?.name || "Exercise"}`}
-      open={visible}
+      title={`Log Exercise: ${selectedExercise?.name || ""}`}
+      visible={visible}
       onCancel={onCancel}
       footer={null}
+      destroyOnClose
     >
-      <Form form={form} layout="vertical" onFinish={onSubmit}>
-        {selectedExercise && (
-          <div className="mb-4 flex flex-wrap gap-2">
-            <Tag color="blue">{selectedExercise.muscle_group || "General"}</Tag>
-            <Tag color="cyan">{selectedExercise.equipment || "Bodyweight"}</Tag>
-            {selectedExercise.difficulty && (
-              <Tag color="orange">{selectedExercise.difficulty}</Tag>
-            )}
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={onSubmit}
+        initialValues={{
+          sets: 3,
+          reps: 10,
+          weight: "",
+          rest: 60,
+          notes: "",
+        }}
+      >
+        <Form.Item
+          label="Sets"
+          name="sets"
+          rules={[{ required: true, message: "Please enter number of sets" }]}
+        >
+          <InputNumber min={1} max={100} style={{ width: "100%" }} />
+        </Form.Item>
+
+        <Form.Item
+          label="Reps"
+          name="reps"
+          rules={[{ required: true, message: "Please enter number of reps" }]}
+        >
+          <InputNumber min={1} max={1000} style={{ width: "100%" }} />
+        </Form.Item>
+
+        <Form.Item
+          label="Weight (kg)"
+          name="weight"
+          tooltip="Leave empty for bodyweight exercise"
+        >
+          <InputNumber
+            min={0}
+            max={1000}
+            step={2.5}
+            style={{ width: "100%" }}
+            placeholder="Weight in kg"
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Rest Time (seconds)"
+          name="rest"
+          tooltip="Rest time between sets"
+        >
+          <InputNumber
+            min={0}
+            max={600}
+            step={5}
+            style={{ width: "100%" }}
+            placeholder="Rest time in seconds"
+          />
+        </Form.Item>
+
+        <Form.Item label="Notes" name="notes">
+          <Input.TextArea
+            rows={3}
+            placeholder="Any notes about this exercise..."
+          />
+        </Form.Item>
+
+        <Form.Item className="mb-0">
+          <div className="flex justify-end gap-2">
+            <Button onClick={onCancel}>Cancel</Button>
+            <Button type="primary" htmlType="submit">
+              Log Exercise
+            </Button>
           </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <Form.Item
-            name="sets"
-            label="Sets"
-            rules={[{ required: true, message: "Required" }]}
-            initialValue={3}
-          >
-            <InputNumber min={1} style={{ width: "100%" }} />
-          </Form.Item>
-
-          <Form.Item
-            name="reps"
-            label="Reps"
-            rules={[{ required: true, message: "Required" }]}
-            initialValue={10}
-          >
-            <InputNumber min={1} style={{ width: "100%" }} />
-          </Form.Item>
-        </div>
-
-        <Form.Item name="weight" label="Weight (kg - optional)">
-          <InputNumber min={0} step={0.5} style={{ width: "100%" }} />
         </Form.Item>
-
-        <Form.Item name="notes" label="Notes (optional)">
-          <Input.TextArea />
-        </Form.Item>
-
-        <div className="flex justify-end">
-          <Button onClick={onCancel} className="mr-2">
-            Cancel
-          </Button>
-          <Button type="primary" htmlType="submit">
-            Log Exercise
-          </Button>
-        </div>
       </Form>
     </Modal>
   );

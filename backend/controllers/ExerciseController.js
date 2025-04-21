@@ -57,6 +57,7 @@ export const getMuscleGroups = async (req, res) => {
 };
 
 // Get user's exercise logs for a specific date
+
 export const getUserExerciseLogs = async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -78,7 +79,7 @@ export const getUserExerciseLogs = async (req, res) => {
     }
 
     const result = await con.query(
-      `SELECT el.log_id, el.user_id, el.exercise_id, el.date, el.sets, el.reps, el.weight, el.notes,
+      `SELECT el.log_id, el.user_id, el.exercise_id, el.date, el.sets, el.reps, el.weight, el.rest, el.notes,
               e.name, e.muscle_group, e.equipment
        FROM exercise_logs el
        JOIN exercises e ON el.exercise_id = e.exercise_id
@@ -103,20 +104,27 @@ export const getUserExerciseLogs = async (req, res) => {
   }
 };
 
+// ...existing code...
+
 // Log an exercise for user
 export const logExercise = async (req, res) => {
   try {
     const userId = req.params.userId;
-    const { exercise_id, date, sets, reps, weight, notes } = req.body;
+    const {
+      exercise_id,
+      exercise_name,
+      muscle_group,
+      date,
+      sets,
+      reps,
+      weight,
+      rest,
+      notes,
+    } = req.body;
 
-    // Debug logging
-    console.log("Auth check for logging exercise:", {
-      tokenUserId: req.user.id,
-      requestUserId: userId,
-      isAdmin: req.user.isAdmin,
-    });
+    console.log("Request body:", req.body); // For debugging
 
-    // UPDATED: Use string comparison for UUID format
+    // Auth check - same as before
     if (String(req.user.id) !== String(userId) && !req.user.isAdmin) {
       return res.status(403).json({
         success: false,
@@ -124,33 +132,81 @@ export const logExercise = async (req, res) => {
       });
     }
 
-    const result = await con.query(
-      `INSERT INTO exercise_logs (user_id, exercise_id, date, sets, reps, weight, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING log_id`,
-      [userId, exercise_id, date, sets, reps, weight, notes]
-    );
+    // Handle exercise_name + muscle_group case
+    let finalExerciseId = exercise_id;
+    let exerciseDetails;
 
-    // Get exercise details for response
-    const exerciseDetails = await con.query(
-      "SELECT * FROM exercises WHERE exercise_id = $1",
-      [exercise_id]
+    if (!finalExerciseId && exercise_name && muscle_group) {
+      // Check if exercise with this name already exists
+      const existingExerciseResult = await con.query(
+        "SELECT exercise_id FROM exercises WHERE name = $1 AND muscle_group = $2 LIMIT 1",
+        [exercise_name, muscle_group]
+      );
+
+      if (existingExerciseResult.rows.length > 0) {
+        // Use existing exercise
+        finalExerciseId = existingExerciseResult.rows[0].exercise_id;
+      } else {
+        // Create new exercise
+        const newExerciseResult = await con.query(
+          "INSERT INTO exercises (name, muscle_group) VALUES ($1, $2) RETURNING exercise_id",
+          [exercise_name, muscle_group]
+        );
+        finalExerciseId = newExerciseResult.rows[0].exercise_id;
+      }
+
+      // Get exercise details
+      const exerciseResult = await con.query(
+        "SELECT * FROM exercises WHERE exercise_id = $1",
+        [finalExerciseId]
+      );
+      exerciseDetails = exerciseResult.rows[0];
+    } else if (finalExerciseId) {
+      // Get exercise details from provided ID
+      const exerciseResult = await con.query(
+        "SELECT * FROM exercises WHERE exercise_id = $1",
+        [finalExerciseId]
+      );
+
+      if (exerciseResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Exercise not found",
+        });
+      }
+
+      exerciseDetails = exerciseResult.rows[0];
+    } else {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Either exercise_id or both exercise_name and muscle_group must be provided",
+      });
+    }
+
+    // Insert exercise log with the determined exercise_id
+    const result = await con.query(
+      `INSERT INTO exercise_logs (user_id, exercise_id, date, sets, reps, weight, rest, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING log_id`,
+      [userId, finalExerciseId, date, sets, reps, weight, rest || null, notes]
     );
 
     res.status(201).json({
       success: true,
       data: {
         log_id: result.rows[0].log_id,
-        user_id: userId, // Return the original UUID instead of parsing to int
-        exercise_id: exercise_id,
+        user_id: userId,
+        exercise_id: finalExerciseId,
         date,
         sets,
         reps,
         weight: weight || null,
+        rest: rest || null,
         notes,
-        name: exerciseDetails.rows[0].name,
-        muscle_group: exerciseDetails.rows[0].muscle_group,
-        equipment: exerciseDetails.rows[0].equipment,
+        name: exerciseDetails.name,
+        muscle_group: exerciseDetails.muscle_group,
+        equipment: exerciseDetails.equipment,
       },
     });
   } catch (error) {
@@ -215,7 +271,7 @@ export const createWorkoutDay = async (req, res) => {
     if (!workout_date) {
       return res.status(400).json({
         success: false,
-        message: "Workout date is required"
+        message: "Workout date is required",
       });
     }
 
@@ -228,7 +284,7 @@ export const createWorkoutDay = async (req, res) => {
     if (programExists.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Training program not found"
+        message: "Training program not found",
       });
     }
 
@@ -242,7 +298,7 @@ export const createWorkoutDay = async (req, res) => {
     if (existingDay.rows.length > 0) {
       return res.status(400).json({
         success: false,
-        message: "A workout day already exists for this date"
+        message: "A workout day already exists for this date",
       });
     }
 
@@ -260,14 +316,14 @@ export const createWorkoutDay = async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Workout day created successfully",
-      data: result.rows[0]
+      data: result.rows[0],
     });
   } catch (error) {
     console.error("Error creating workout day:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -286,7 +342,7 @@ export const getWorkoutDays = async (req, res) => {
     if (programExists.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Training program not found"
+        message: "Training program not found",
       });
     }
 
@@ -301,14 +357,14 @@ export const getWorkoutDays = async (req, res) => {
     return res.status(200).json({
       success: true,
       count: result.rows.length,
-      data: result.rows
+      data: result.rows,
     });
   } catch (error) {
     console.error("Error getting workout days:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -322,7 +378,7 @@ export const addExercisesToWorkoutDay = async (req, res) => {
     if (!exercises || !Array.isArray(exercises) || exercises.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Exercises array is required"
+        message: "Exercises array is required",
       });
     }
 
@@ -335,7 +391,7 @@ export const addExercisesToWorkoutDay = async (req, res) => {
     if (workoutDay.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Workout day not found"
+        message: "Workout day not found",
       });
     }
 
@@ -374,7 +430,7 @@ export const addExercisesToWorkoutDay = async (req, res) => {
           ex.tempo || null,
           ex.rest || null,
           ex.coaches_notes || ex.notes || null,
-          i + 1  // exercise_order starts from 1
+          i + 1, // exercise_order starts from 1
         ]
       );
     }
@@ -384,7 +440,7 @@ export const addExercisesToWorkoutDay = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Exercises added to workout day successfully"
+      message: "Exercises added to workout day successfully",
     });
   } catch (error) {
     // Rollback transaction in case of error
@@ -393,7 +449,7 @@ export const addExercisesToWorkoutDay = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -412,7 +468,7 @@ export const getWorkoutDayExercises = async (req, res) => {
     if (workoutDayExists.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Workout day not found"
+        message: "Workout day not found",
       });
     }
 
@@ -423,19 +479,19 @@ export const getWorkoutDayExercises = async (req, res) => {
        ORDER BY exercise_order`,
       [workout_day_id]
     );
-    
+
     return res.status(200).json({
       success: true,
       data: {
-        exercises: exercisesResult.rows
-      }
+        exercises: exercisesResult.rows,
+      },
     });
   } catch (error) {
     console.error("Error fetching workout day exercises:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -455,7 +511,7 @@ export const updateWorkoutDay = async (req, res) => {
     if (workoutDayExists.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Workout day not found"
+        message: "Workout day not found",
       });
     }
 
@@ -472,7 +528,7 @@ export const updateWorkoutDay = async (req, res) => {
       if (dateConflict.rows.length > 0) {
         return res.status(400).json({
           success: false,
-          message: "Another workout day already exists for this date"
+          message: "Another workout day already exists for this date",
         });
       }
     }
@@ -500,7 +556,7 @@ export const updateWorkoutDay = async (req, res) => {
     if (updateFields.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "No fields to update"
+        message: "No fields to update",
       });
     }
 
@@ -508,7 +564,7 @@ export const updateWorkoutDay = async (req, res) => {
 
     const result = await con.query(
       `UPDATE program_workout_days 
-       SET ${updateFields.join(', ')} 
+       SET ${updateFields.join(", ")} 
        WHERE workout_day_id = $${paramCount} 
        RETURNING *`,
       values
@@ -517,14 +573,14 @@ export const updateWorkoutDay = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Workout day updated successfully",
-      data: result.rows[0]
+      data: result.rows[0],
     });
   } catch (error) {
     console.error("Error updating workout day:", error);
     return res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -543,7 +599,7 @@ export const deleteWorkoutDay = async (req, res) => {
     if (workoutDayExists.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Workout day not found"
+        message: "Workout day not found",
       });
     }
 
@@ -551,10 +607,9 @@ export const deleteWorkoutDay = async (req, res) => {
     await con.query("BEGIN");
 
     // Delete exercises for this workout day
-    await con.query(
-      `DELETE FROM program_exercises WHERE workout_day_id = $1`,
-      [workout_day_id]
-    );
+    await con.query(`DELETE FROM program_exercises WHERE workout_day_id = $1`, [
+      workout_day_id,
+    ]);
 
     // Delete the workout day
     await con.query(
@@ -567,7 +622,7 @@ export const deleteWorkoutDay = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Workout day and associated exercises deleted successfully"
+      message: "Workout day and associated exercises deleted successfully",
     });
   } catch (error) {
     // Rollback transaction in case of error
@@ -576,7 +631,7 @@ export const deleteWorkoutDay = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -590,7 +645,7 @@ export const updateWorkoutDayExercises = async (req, res) => {
     if (!exercises || !Array.isArray(exercises)) {
       return res.status(400).json({
         success: false,
-        message: "Exercises array is required"
+        message: "Exercises array is required",
       });
     }
 
@@ -603,7 +658,7 @@ export const updateWorkoutDayExercises = async (req, res) => {
     if (workoutDay.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Workout day not found"
+        message: "Workout day not found",
       });
     }
 
@@ -613,10 +668,9 @@ export const updateWorkoutDayExercises = async (req, res) => {
     await con.query("BEGIN");
 
     // Delete existing exercises for this workout day
-    await con.query(
-      `DELETE FROM program_exercises WHERE workout_day_id = $1`,
-      [workout_day_id]
-    );
+    await con.query(`DELETE FROM program_exercises WHERE workout_day_id = $1`, [
+      workout_day_id,
+    ]);
 
     // Insert updated exercises
     for (let i = 0; i < exercises.length; i++) {
@@ -648,7 +702,7 @@ export const updateWorkoutDayExercises = async (req, res) => {
           ex.tempo || null,
           ex.rest || null,
           ex.coaches_notes || ex.notes || null,
-          i + 1  // exercise_order starts from 1
+          i + 1, // exercise_order starts from 1
         ]
       );
     }
@@ -658,7 +712,7 @@ export const updateWorkoutDayExercises = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Workout day exercises updated successfully"
+      message: "Workout day exercises updated successfully",
     });
   } catch (error) {
     // Rollback transaction in case of error
@@ -666,8 +720,8 @@ export const updateWorkoutDayExercises = async (req, res) => {
     console.error("Error updating workout day exercises:", error);
     return res.status(500).json({
       success: false,
-      message: "Server error", 
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 };
