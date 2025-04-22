@@ -63,6 +63,14 @@ export const getUserExerciseLogs = async (req, res) => {
     const userId = req.params.userId;
     const { date } = req.query;
 
+    if (!req.user) {
+      console.error("Authentication error: req.user is undefined");
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required. Please log in again.",
+      });
+    }
+
     // Debug logging
     console.log("Auth check for exercise logs:", {
       tokenUserId: req.user.id,
@@ -123,6 +131,14 @@ export const logExercise = async (req, res) => {
     } = req.body;
 
     console.log("Request body:", req.body); // For debugging
+
+    if (!req.user) {
+      console.error("Authentication error: req.user is undefined");
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required. Please log in again.",
+      });
+    }
 
     // Auth check - same as before
     if (String(req.user.id) !== String(userId) && !req.user.isAdmin) {

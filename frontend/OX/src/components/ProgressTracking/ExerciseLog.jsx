@@ -40,6 +40,10 @@ const ExerciseLog = ({ userId, selectedDate, token }) => {
   // Effect to fetch data on mount
   useEffect(() => {
     if (userId) {
+      console.log(
+        "Token being used:",
+        token ? token.substring(0, 15) + "..." : "No token found"
+      );
       fetchUserExercises();
     }
   }, [userId, selectedDate]);

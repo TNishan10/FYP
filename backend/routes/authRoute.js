@@ -363,9 +363,9 @@ router.delete("/progress/weight/:userId/:weightId", deleteWeightEntry);
 // Exercise Tracking Routes
 router.get("/exercises/list", getExercises);
 router.get("/exercises/muscle-groups", getMuscleGroups);
-router.get("/exercises/user/:userId", getUserExerciseLogs);
-router.post("/exercises/log/:userId", logExercise);
-router.delete("/exercises/log/:userId/remove/:logId", removeExerciseLog);
+router.get("/exercises/user/:userId", requireSignIn, getUserExerciseLogs);
+router.post("/exercises/log/:userId", requireSignIn, logExercise);
+router.delete("/exercises/log/:userId/remove/:logId", requireSignIn, removeExerciseLog);
 
 // Workout Day Routes (NEW)
 router.post("/training-programs/:program_id/workout-days", createWorkoutDay);
