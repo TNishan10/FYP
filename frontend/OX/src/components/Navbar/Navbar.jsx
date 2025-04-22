@@ -70,6 +70,7 @@ const Navbar = () => {
   const profileMenuRef = useRef(null);
   const mobileMenuRef = useRef(null);
   const { logout } = useAuth(); // Use the logout function from AuthContext
+  const [searchTerm, setSearchTerm] = useState(""); // Add state for search term
 
   // Check login status whenever component renders or location changes
   useEffect(() => {
@@ -149,6 +150,48 @@ const Navbar = () => {
     setShowProfileMenu(false);
   };
 
+  // Handle search functionality
+  const handleSearch = (e) => {
+    e.preventDefault();
+
+    if (!searchTerm.trim()) return; // Don't search if empty
+
+    const term = searchTerm.toLowerCase();
+
+    // Redirect based on search terms
+    if (term.includes("program") || term.includes("training")) {
+      navigate("/programs");
+    } else if (term.includes("exercise") || term.includes("tutorial")) {
+      navigate("/exercise");
+    } else if (term.includes("progress") || term.includes("track")) {
+      navigate("/progress-tracking");
+    } else if (
+      term.includes("nutrition") ||
+      term.includes("diet") ||
+      term.includes("food")
+    ) {
+      navigate("/nutrition");
+    } else if (term.includes("supplement")) {
+      navigate("/supplements");
+    } else if (term.includes("recipe")) {
+      navigate("/recipes");
+    } else if (term.includes("about")) {
+      navigate("/aboutUs");
+    } else if (
+      (term.includes("dashboard") || term.includes("profile")) &&
+      isLoggedIn
+    ) {
+      term.includes("profile") ? navigate("/profile") : navigate("/dashboard");
+    } else {
+      // If no specific match, show a toast message
+      toast.info(`Searching for "${searchTerm}"`, { position: "top-center" });
+      // Could implement a more comprehensive search results page in the future
+    }
+
+    // Clear search after submission
+    setSearchTerm("");
+  };
+
   return (
     <div
       className="shadow-md bg-white
@@ -170,21 +213,26 @@ const Navbar = () => {
           {/* search bar and login/logout button */}
           <div className="flex justify-between items-center gap-4 ">
             <div className="relative group hidden sm:block">
-              <input
-                type="text"
-                placeholder="search"
-                className="w-[200px] sm:w-[200px] 
-                    group-hover:w-[300px] transition-all 
-                    duration-300 rounded-full border
-                     border-gray-300 px-2 py-1 
-                     focus:outline-none focus:border-1 
-                     focus:border-primary"
-              />
-              <IoMdSearch
-                className="text-gray-500 group-hover:text-primary 
-                absolute top-1/2 -translate-y-1/2 
-                right-3"
-              />
+              <form onSubmit={handleSearch} className="m-0 p-0">
+                <input
+                  type="text"
+                  placeholder="search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-[200px] sm:w-[200px] 
+                      group-hover:w-[300px] transition-all 
+                      duration-300 rounded-full border
+                      border-gray-300 px-2 py-1 
+                      focus:outline-none focus:border-1 
+                      focus:border-primary"
+                />
+                <button
+                  type="submit"
+                  className="absolute top-1/2 -translate-y-1/2 right-3 bg-transparent border-0 p-0 cursor-pointer"
+                >
+                  <IoMdSearch className="text-gray-500 group-hover:text-primary" />
+                </button>
+              </form>
             </div>
 
             {/* Dark mode switch */}

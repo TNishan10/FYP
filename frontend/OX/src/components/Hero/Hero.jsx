@@ -13,23 +13,23 @@ const ImageList = [
   {
     id: 1,
     img: Image1,
-    title: "The best gym in the Country",
+    title: "Your Limits? They're About to Be Shattered",
     description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "With OX-Fit's elite trainers, discover what you're truly capable of. Our personalized approach targets your specific needs and pushes you beyond what you thought possible. This isn't just fitness—it's a redefinition of your potential.",
   },
   {
     id: 2,
     img: Image2,
-    title: "The best gym in the Country",
+    title: "Join Our Fitness Community",
     description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "At OX-Fit, you're never alone on your fitness journey. Connect with like-minded individuals, participate in group challenges, and stay motivated with our supportive community that celebrates every victory, big or small.",
   },
   {
     id: 3,
     img: Image3,
-    title: "The best gym in the Country",
+    title: "The Strongest Version of You is Waiting",
     description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+      "Every great transformation begins with a decision. OX-Fit's expert trainers craft your perfect fitness blueprint—balancing challenge and progress in a program designed exclusively for your body. Your stronger, more confident self is just one decision away.",
   },
 ];
 
