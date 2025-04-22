@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, Button, Radio, Table, Empty, Form, notification } from "antd";
 import {
   PlusOutlined,
   DeleteOutlined,
   LineChartOutlined,
 } from "@ant-design/icons";
+import "../../utils/Chart";
 import { Line } from "react-chartjs-2";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -18,6 +19,23 @@ const WeightHistory = ({ userId, selectedDate, token }) => {
   const [weightModalVisible, setWeightModalVisible] = useState(false);
   const [weightChartPeriod, setWeightChartPeriod] = useState("all");
 
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (chartRef.current) {
+        // Access the chart instance directly if possible
+        const chartInstance =
+          chartRef.current.chartInstance ||
+          (chartRef.current.getChart && chartRef.current.getChart());
+
+        if (chartInstance && chartInstance.destroy) {
+          chartInstance.destroy();
+        }
+      }
+    };
+  }, []);
+
   // Fetch weight history on component mount and when props change
   useEffect(() => {
     if (userId) {
@@ -28,6 +46,20 @@ const WeightHistory = ({ userId, selectedDate, token }) => {
   // Fetch weight history
   const fetchWeightHistory = async () => {
     try {
+      console.log("Fetching weight history for user:", userId);
+      console.log(
+        "Token being used:",
+        token ? token.substring(0, 10) + "..." : "No token"
+      );
+
+      if (!token) {
+        notification.error({
+          message: "Authentication Error",
+          description: "You need to be logged in to view weight history.",
+        });
+        return;
+      }
+
       const response = await axios.get(`${API_URL}/progress/weight/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -42,6 +74,15 @@ const WeightHistory = ({ userId, selectedDate, token }) => {
       }
     } catch (error) {
       console.error("Error fetching weight history:", error);
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      }
+
+      notification.error({
+        message: "Failed to load weight data",
+        description: "There was a problem retrieving your weight history.",
+      });
       setWeightHistory([]);
     }
   };
@@ -232,7 +273,12 @@ const WeightHistory = ({ userId, selectedDate, token }) => {
             </div>
 
             <div className="h-80">
-              <Line data={formatWeightDataForChart()} options={chartOptions} />
+              <Line
+                data={formatWeightDataForChart()}
+                options={chartOptions}
+                key={`weight-chart-${weightHistory.length}-${weightChartPeriod}`}
+                ref={chartRef}
+              />
             </div>
           </>
         )}

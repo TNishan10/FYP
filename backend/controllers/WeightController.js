@@ -5,8 +5,21 @@ export const getWeightHistory = async (req, res) => {
   try {
     const userId = req.params.userId;
 
+    console.log("Auth check for weight history:", {
+      tokenUserId: req.user?.id,
+      requestUserId: userId,
+      isAdmin: req.user?.isAdmin,
+    });
+
+    // Check if user is authenticated first
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
     // Check if user is authorized
-    if (req.user.id !== parseInt(userId) && !req.user.isAdmin) {
+    if (String(req.user.id) !== String(userId) && !req.user.isAdmin) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to access this data",
@@ -38,8 +51,15 @@ export const addWeightEntry = async (req, res) => {
     const userId = req.params.userId;
     const { weight, date, notes } = req.body;
 
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
     // Check if user is authorized
-    if (req.user.id !== parseInt(userId) && !req.user.isAdmin) {
+    if (String(req.user.id) !== String(userId) && !req.user.isAdmin) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to modify this data",
@@ -103,8 +123,15 @@ export const deleteWeightEntry = async (req, res) => {
     const userId = req.params.userId;
     const weightId = req.params.weightId;
 
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
     // Check if user is authorized
-    if (req.user.id !== parseInt(userId) && !req.user.isAdmin) {
+    if (String(req.user.id) !== String(userId) && !req.user.isAdmin) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to modify this data",
