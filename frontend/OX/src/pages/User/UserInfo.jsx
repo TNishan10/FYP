@@ -14,7 +14,10 @@ import {
   Card,
   Spin,
   Divider,
+  Space,
+  Tag,
 } from "antd";
+import moment from "moment";
 
 const UserInfo = () => {
   const navigate = useNavigate();
@@ -22,6 +25,8 @@ const UserInfo = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedConditions, setSelectedConditions] = useState([]);
   const [healthConditions, setHealthConditions] = useState([]);
+  const [customCondition, setCustomCondition] = useState("");
+  const [customConditions, setCustomConditions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [noConditionsSelected, setNoConditionsSelected] = useState(false);
   const [selectedGender, setSelectedGender] = useState("Male");
@@ -48,7 +53,33 @@ const UserInfo = () => {
         );
 
         if (response.data.success) {
-          setHealthConditions(response.data.data);
+          // Ensure we have some common health conditions in the list
+          const commonConditions = [
+            { condition_id: "diabetes", condition_name: "Diabetes" },
+            { condition_id: "hypertension", condition_name: "Hypertension" },
+            { condition_id: "asthma", condition_name: "Asthma" },
+            { condition_id: "heart_disease", condition_name: "Heart Disease" },
+            { condition_id: "arthritis", condition_name: "Arthritis" },
+            { condition_id: "back_pain", condition_name: "Chronic Back Pain" },
+            { condition_id: "obesity", condition_name: "Obesity" },
+            { condition_id: "thyroid", condition_name: "Thyroid Disorder" },
+            {
+              condition_id: "high_cholesterol",
+              condition_name: "High Cholesterol",
+            },
+            { condition_id: "depression", condition_name: "Depression" },
+            { condition_id: "anxiety", condition_name: "Anxiety" },
+          ];
+
+          // Get existing condition IDs to avoid duplicates
+          const existingIds = response.data.data.map((c) => c.condition_id);
+
+          // Add common conditions that don't already exist in the API response
+          const additionalConditions = commonConditions.filter(
+            (c) => !existingIds.includes(c.condition_id)
+          );
+
+          setHealthConditions([...response.data.data, ...additionalConditions]);
         } else {
           toast.error("Failed to fetch health conditions");
         }
@@ -79,7 +110,8 @@ const UserInfo = () => {
 
   const handleOk = () => {
     setIsModalVisible(false);
-    toast.success(`Selected ${selectedConditions.length} health conditions`, {
+    const totalConditions = selectedConditions.length + customConditions.length;
+    toast.success(`Selected ${totalConditions} health conditions`, {
       position: "top-right",
       autoClose: 3000,
     });
@@ -93,13 +125,155 @@ const UserInfo = () => {
   const handleHealthConditionChange = (values) => {
     setSelectedConditions(values);
   };
+
+  // Handle adding custom health condition
+  const handleAddCustomCondition = () => {
+    if (customCondition.trim() !== "") {
+      const newCondition = {
+        condition_id: `custom_${Date.now()}`,
+        condition_name: customCondition.trim(),
+        isCustom: true,
+      };
+
+      setCustomConditions([...customConditions, newCondition]);
+      setCustomCondition("");
+      toast.success("Custom health condition added", {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    }
+  };
+
+  // Remove custom condition
+  const handleRemoveCustomCondition = (conditionToRemove) => {
+    setCustomConditions(
+      customConditions.filter(
+        (condition) => condition.condition_id !== conditionToRemove.condition_id
+      )
+    );
+  };
+
   const handleNoConditions = () => {
     setSelectedConditions([]);
+    setCustomConditions([]);
     setNoConditionsSelected(true);
     toast.success("No health conditions selected", {
       position: "top-right",
       autoClose: 2000,
     });
+  };
+
+  // Custom validators
+  const validateWeight = (_, value) => {
+    if (value === undefined || value === null) {
+      return Promise.reject("Please enter your weight");
+    }
+    if (value < 30 || value > 300) {
+      return Promise.reject("Please enter a valid weight between 30 and 300");
+    }
+    return Promise.resolve();
+  };
+
+  const validateHeight = (_, value) => {
+    if (value === undefined || value === null) {
+      return Promise.reject("Please enter your height");
+    }
+    if (value < 100 || value > 250) {
+      return Promise.reject(
+        "Please enter a valid height between 100 and 250 cm"
+      );
+    }
+    return Promise.resolve();
+  };
+
+  const validateNeck = (_, value) => {
+    if (value !== undefined && value !== null) {
+      if (value < 20 || value > 100) {
+        return Promise.reject("Please enter a neck size between 20 and 100 cm");
+      }
+    }
+    return Promise.resolve();
+  };
+
+  const validateShoulders = (_, value) => {
+    if (value !== undefined && value !== null) {
+      if (value < 30 || value > 200) {
+        return Promise.reject(
+          "Please enter a shoulder size between 30 and 200 cm"
+        );
+      }
+    }
+    return Promise.resolve();
+  };
+
+  const validateBiceps = (_, value) => {
+    if (value !== undefined && value !== null) {
+      if (value < 15 || value > 100) {
+        return Promise.reject(
+          "Please enter a biceps size between 15 and 100 cm"
+        );
+      }
+    }
+    return Promise.resolve();
+  };
+
+  const validateForearms = (_, value) => {
+    if (value !== undefined && value !== null) {
+      if (value < 15 || value > 100) {
+        return Promise.reject(
+          "Please enter a forearm size between 15 and 100 cm"
+        );
+      }
+    }
+    return Promise.resolve();
+  };
+
+  const validateHips = (_, value) => {
+    if (value !== undefined && value !== null) {
+      if (value < 50 || value > 200) {
+        return Promise.reject("Please enter a hip size between 50 and 200 cm");
+      }
+    }
+    return Promise.resolve();
+  };
+
+  const validateThighs = (_, value) => {
+    if (value !== undefined && value !== null) {
+      if (value < 30 || value > 100) {
+        return Promise.reject(
+          "Please enter a thigh size between 30 and 100 cm"
+        );
+      }
+    }
+    return Promise.resolve();
+  };
+
+  const validateCalves = (_, value) => {
+    if (value !== undefined && value !== null) {
+      if (value < 20 || value > 100) {
+        return Promise.reject("Please enter a calf size between 20 and 100 cm");
+      }
+    }
+    return Promise.resolve();
+  };
+
+  const validateDOB = (_, value) => {
+    if (!value) {
+      return Promise.reject("Please select your date of birth");
+    }
+
+    const today = moment();
+    const age = today.diff(value, "years");
+
+    if (age < 12) {
+      return Promise.reject("You must be at least 12 years old");
+    }
+
+    if (age > 120) {
+      return Promise.reject("Please enter a valid date of birth");
+    }
+
+    return Promise.resolve();
   };
 
   // Submit user information and health conditions
@@ -110,6 +284,7 @@ const UserInfo = () => {
 
       console.log("Submitting form with user ID:", userId);
       console.log("Selected health conditions:", selectedConditions);
+      console.log("Custom health conditions:", customConditions);
 
       // First, create user info
       const userInfoData = {
@@ -188,6 +363,13 @@ const UserInfo = () => {
                 "User info saved, but there was an error saving health conditions"
               );
             }
+          }
+
+          // For custom conditions, we would typically save them to a different endpoint,
+          // but for now we'll just log them
+          if (customConditions.length > 0) {
+            console.log("Custom health conditions:", customConditions);
+            // In a real implementation, you would save these to the backend
           }
 
           toast.success("User Information Collected!", {
@@ -380,7 +562,8 @@ const UserInfo = () => {
                         No conditions
                       </Button>
                     </div>
-                    {selectedConditions.length > 0 && (
+                    {(selectedConditions.length > 0 ||
+                      customConditions.length > 0) && (
                       <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded-lg animate-fadeIn">
                         <div className="flex items-center">
                           <svg
@@ -398,8 +581,14 @@ const UserInfo = () => {
                             />
                           </svg>
                           <p className="text-sm text-blue-700 font-medium">
-                            {selectedConditions.length} condition
-                            {selectedConditions.length !== 1 ? "s" : ""}{" "}
+                            {selectedConditions.length +
+                              customConditions.length}{" "}
+                            condition
+                            {selectedConditions.length +
+                              customConditions.length !==
+                            1
+                              ? "s"
+                              : ""}{" "}
                             selected
                           </p>
                         </div>
@@ -479,12 +668,7 @@ const UserInfo = () => {
                         </span>
                       }
                       name="dob"
-                      rules={[
-                        {
-                          required: true,
-                          message: "Please select your date of birth",
-                        },
-                      ]}
+                      rules={[{ validator: validateDOB }]}
                       className="mb-4"
                     >
                       <DatePicker
@@ -501,16 +685,7 @@ const UserInfo = () => {
                         <span className="text-base font-medium">Weight</span>
                       }
                       name="weight"
-                      rules={[
-                        { required: true, message: "Please enter your weight" },
-                        {
-                          type: "number",
-                          min: 30,
-                          max: 300,
-                          message:
-                            "Please enter a valid weight between 30 and 300",
-                        },
-                      ]}
+                      rules={[{ validator: validateWeight }]}
                       className="mb-4"
                     >
                       <InputNumber
@@ -518,8 +693,6 @@ const UserInfo = () => {
                         size="large"
                         className="rounded-lg h-12"
                         placeholder="Weight in kg"
-                        min={30}
-                        max={300}
                         addonAfter="kg"
                       />
                     </Form.Item>
@@ -530,16 +703,7 @@ const UserInfo = () => {
                         <span className="text-base font-medium">Height</span>
                       }
                       name="height"
-                      rules={[
-                        { required: true, message: "Please enter your height" },
-                        {
-                          type: "number",
-                          min: 100,
-                          max: 250,
-                          message:
-                            "Please enter a valid height between 100 and 250 cm",
-                        },
-                      ]}
+                      rules={[{ validator: validateHeight }]}
                       className="mb-4"
                     >
                       <InputNumber
@@ -547,8 +711,6 @@ const UserInfo = () => {
                         size="large"
                         className="rounded-lg h-12"
                         placeholder="Height in cm"
-                        min={100}
-                        max={250}
                         addonAfter="cm"
                       />
                     </Form.Item>
@@ -749,6 +911,7 @@ const UserInfo = () => {
                       <Form.Item
                         label={<span className="font-medium">Neck</span>}
                         name="neck_size"
+                        rules={[{ validator: validateNeck }]}
                         className="mb-2"
                       >
                         <InputNumber
@@ -756,8 +919,6 @@ const UserInfo = () => {
                           size="large"
                           className="rounded-lg"
                           placeholder="cm"
-                          min={20}
-                          max={100}
                         />
                       </Form.Item>
 
@@ -765,6 +926,7 @@ const UserInfo = () => {
                       <Form.Item
                         label={<span className="font-medium">Shoulders</span>}
                         name="shoulder_size"
+                        rules={[{ validator: validateShoulders }]}
                         className="mb-2"
                       >
                         <InputNumber
@@ -772,8 +934,6 @@ const UserInfo = () => {
                           size="large"
                           className="rounded-lg"
                           placeholder="cm"
-                          min={30}
-                          max={200}
                         />
                       </Form.Item>
 
@@ -781,6 +941,7 @@ const UserInfo = () => {
                       <Form.Item
                         label={<span className="font-medium">Biceps</span>}
                         name="biceps_size"
+                        rules={[{ validator: validateBiceps }]}
                         className="mb-2"
                       >
                         <InputNumber
@@ -788,8 +949,6 @@ const UserInfo = () => {
                           size="large"
                           className="rounded-lg"
                           placeholder="cm"
-                          min={15}
-                          max={100}
                         />
                       </Form.Item>
 
@@ -797,6 +956,7 @@ const UserInfo = () => {
                       <Form.Item
                         label={<span className="font-medium">Forearms</span>}
                         name="forearm_size"
+                        rules={[{ validator: validateForearms }]}
                         className="mb-2"
                       >
                         <InputNumber
@@ -804,8 +964,6 @@ const UserInfo = () => {
                           size="large"
                           className="rounded-lg"
                           placeholder="cm"
-                          min={15}
-                          max={100}
                         />
                       </Form.Item>
                     </div>
@@ -821,6 +979,7 @@ const UserInfo = () => {
                       <Form.Item
                         label={<span className="font-medium">Hips</span>}
                         name="hip_size"
+                        rules={[{ validator: validateHips }]}
                         className="mb-2"
                       >
                         <InputNumber
@@ -828,8 +987,6 @@ const UserInfo = () => {
                           size="large"
                           className="rounded-lg"
                           placeholder="cm"
-                          min={50}
-                          max={200}
                         />
                       </Form.Item>
 
@@ -837,6 +994,7 @@ const UserInfo = () => {
                       <Form.Item
                         label={<span className="font-medium">Thighs</span>}
                         name="thigh_size"
+                        rules={[{ validator: validateThighs }]}
                         className="mb-2"
                       >
                         <InputNumber
@@ -844,8 +1002,6 @@ const UserInfo = () => {
                           size="large"
                           className="rounded-lg"
                           placeholder="cm"
-                          min={30}
-                          max={100}
                         />
                       </Form.Item>
 
@@ -853,6 +1009,7 @@ const UserInfo = () => {
                       <Form.Item
                         label={<span className="font-medium">Calves</span>}
                         name="claves_size"
+                        rules={[{ validator: validateCalves }]}
                         className="mb-2"
                       >
                         <InputNumber
@@ -860,8 +1017,6 @@ const UserInfo = () => {
                           size="large"
                           className="rounded-lg"
                           placeholder="cm"
-                          min={20}
-                          max={100}
                         />
                       </Form.Item>
                     </div>
@@ -953,8 +1108,8 @@ const UserInfo = () => {
               />
             </svg>
             <span>
-              If your health condition is not listed below, please consult your
-              trainer or doctor!
+              Select from the list below or add your own health condition if
+              it's not listed.
             </span>
           </p>
         </div>
@@ -984,7 +1139,54 @@ const UserInfo = () => {
               </Option>
             ))}
           </Select>
+
+          <div className="mt-4 mb-2">
+            <h4 className="text-base font-medium text-gray-700 mb-2">
+              Add a custom health condition
+            </h4>
+            <Space.Compact style={{ width: "100%" }}>
+              <Input
+                placeholder="Enter your health condition"
+                value={customCondition}
+                onChange={(e) => setCustomCondition(e.target.value)}
+                onPressEnter={() =>
+                  customCondition.trim() && handleAddCustomCondition()
+                }
+                size="large"
+                className="rounded-lg"
+              />
+              <Button
+                type="primary"
+                onClick={handleAddCustomCondition}
+                disabled={!customCondition.trim()}
+                size="large"
+                style={{ backgroundColor: "#4285F4", borderColor: "#4285F4" }}
+              >
+                Add
+              </Button>
+            </Space.Compact>
+          </div>
         </Spin>
+
+        {customConditions.length > 0 && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-100 rounded-lg animate-fadeIn">
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              Your custom health conditions:
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {customConditions.map((condition) => (
+                <Tag
+                  key={condition.condition_id}
+                  closable
+                  onClose={() => handleRemoveCustomCondition(condition)}
+                  className="px-2 py-1 text-sm rounded-lg bg-blue-100 text-blue-700 border-blue-200"
+                >
+                  {condition.condition_name}
+                </Tag>
+              ))}
+            </div>
+          </div>
+        )}
 
         {selectedConditions.length > 0 && (
           <div className="mt-4 p-3 bg-green-50 border border-green-100 rounded-lg animate-fadeIn">

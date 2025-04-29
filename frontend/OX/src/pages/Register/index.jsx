@@ -5,7 +5,6 @@ import axios from "axios";
 import RegisterLayout from "./components/RegisterLayout";
 import RegisterForm from "./components/RegisterForm";
 
-
 const Register = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);

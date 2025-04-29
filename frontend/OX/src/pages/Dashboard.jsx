@@ -12,14 +12,20 @@ import {
   Radio,
   Form,
   Input,
-  Carousel,
   DatePicker,
   Card,
   Spin,
-  InputNumber,
 } from "antd";
 import { toast } from "react-toastify";
 import Chart from "../components/Charts/Chart.jsx";
+import {
+  UserOutlined,
+  CalendarOutlined,
+  ColumnHeightOutlined,
+  LineChartOutlined,
+  FileTextOutlined,
+  IdcardOutlined,
+} from "@ant-design/icons";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -56,19 +62,13 @@ const Dashboard = () => {
   // Temp form values
   const [heightInput, setHeightInput] = useState("");
   const [weightInput, setWeightInput] = useState("");
+  const [heightError, setHeightError] = useState("");
+  const [weightError, setWeightError] = useState("");
 
   // Modal states
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isMeasureModalVisible, setIsMeasureModalVisible] = useState(false);
   const [isDateModalVisible, setIsDateModalVisible] = useState(false);
-
-  // Carousel style
-  const contentStyle = {
-    height: "260px",
-    color: "#fff",
-    lineHeight: "260px",
-    textAlign: "center",
-  };
 
   // Fetch user data
   useEffect(() => {
@@ -283,10 +283,43 @@ const Dashboard = () => {
     }
   };
 
+  // Validate weight input
+  const validateWeight = (value) => {
+    setWeightInput(value);
+    if (value && (isNaN(value) || value <= 0 || value > 500)) {
+      setWeightError("Please enter a valid weight (1-500 kg)");
+      return false;
+    } else {
+      setWeightError("");
+      return true;
+    }
+  };
+
+  // Validate height input
+  const validateHeight = (value) => {
+    setHeightInput(value);
+    if (value && (isNaN(value) || value <= 0 || value > 300)) {
+      setHeightError("Please enter a valid height (1-300 cm)");
+      return false;
+    } else {
+      setHeightError("");
+      return true;
+    }
+  };
+
   // Update height and weight
   const updateHeightWeight = async () => {
-    if (!heightInput && !weightInput) {
+    // Validate inputs
+    const isWeightValid = validateWeight(weightInput);
+    const isHeightValid = validateHeight(heightInput);
+
+    if (!weightInput && !heightInput) {
       toast.error("Please enter height or weight to update");
+      return;
+    }
+
+    if ((!isWeightValid && weightInput) || (!isHeightValid && heightInput)) {
+      toast.error("Please correct the invalid inputs");
       return;
     }
 
@@ -296,8 +329,8 @@ const Dashboard = () => {
       const token = sessionStorage.getItem("token");
 
       const updateData = {};
-      if (heightInput) updateData.height = heightInput;
       if (weightInput) updateData.weight = weightInput;
+      if (heightInput) updateData.height = heightInput;
 
       // Update user info
       await axios.put(
@@ -356,6 +389,17 @@ const Dashboard = () => {
   // Update body measurements
   const updateBodyMeasurements = async (values) => {
     try {
+      // Validate measurements
+      for (const key in values) {
+        if (
+          values[key] &&
+          (isNaN(values[key]) || values[key] <= 0 || values[key] > 300)
+        ) {
+          toast.error(`Please enter a valid measurement for ${key} (1-300 cm)`);
+          return;
+        }
+      }
+
       setLoading(true);
       const userId = localStorage.getItem("userId");
       const token = sessionStorage.getItem("token");
@@ -404,8 +448,16 @@ const Dashboard = () => {
 
   // Calculate BMI
   const calculateBMI = () => {
-    if (!heightInput || !weightInput) {
+    const isWeightValid = validateWeight(weightInput);
+    const isHeightValid = validateHeight(heightInput);
+
+    if (!weightInput || !heightInput) {
       toast.error("Please enter both height and weight");
+      return;
+    }
+
+    if (!isWeightValid || !isHeightValid) {
+      toast.error("Please correct the invalid inputs");
       return;
     }
 
@@ -476,429 +528,483 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="bg-gray-50">
+    <div className="bg-gradient-to-b from-gray-50 to-gray-100 min-h-screen pb-10">
       {isAdmin && (
-        <div className="fixed bg-primaryButton p-1 px-4 rounded-xl z-10 bottom-0 right-0 m-3">
-          <Link to="/admin" className="text-white">
-            Admin panel
+        <div className="fixed bg-gradient-to-r from-blue-600 to-indigo-700 p-2 px-6 rounded-xl z-10 bottom-5 right-5 m-3 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+          <Link to="/admin" className="text-white font-semibold">
+            Admin Panel
           </Link>
         </div>
       )}
 
-      <Spin spinning={loading} tip="Loading your data...">
+      <Spin spinning={loading} tip="Loading your data..." size="large">
         <Modal
-          title="Change your Date of birth"
+          title={
+            <span className="text-xl font-medium">Change Date of Birth</span>
+          }
           open={isDateModalVisible}
           onOk={handleDateModalOk}
           onCancel={handleDateModalCancel}
+          centered
+          bodyStyle={{ padding: "24px" }}
         >
           <DatePicker
             size="large"
-            style={{ width: "100%", borderRadius: "15px" }}
+            style={{ width: "100%", borderRadius: "12px", padding: "12px" }}
             onChange={handleDateChange}
             format={dateFormat}
           />
         </Modal>
 
-        {/* First section - Carousel */}
-        <Carousel autoplay effect="fade">
-          <div>
-            <h3
-              className="md:text-3xl bg-fixed bg-no-repeat bg-cover bg-top bg-[url('https://wallpaperaccess.com/full/2079529.jpg')] text-md tracking-widest"
-              style={contentStyle}
-            >
-              ❝ DON'T WISH FOR IT, WORK FOR IT ❞
-            </h3>
-          </div>
-          <div>
-            <h3
-              className="md:text-3xl bg-fixed bg-no-repeat bg-cover bg-top bg-[url('https://www.matchroomboxing.com/app/themes/matchroom/dist/images/preloader-24_2672c309.jpg')] text-md tracking-widest"
-              style={contentStyle}
-            >
-              ❝ TRAIN INSANE OR REMAIN THE SAME ❞
-            </h3>
-          </div>
-          <div>
-            <h3
-              className="md:text-3xl grayscale text-md bg-fixed bg-no-repeat bg-cover bg-center bg-[url('https://library.sportingnews.com/2021-08/khabib-nurmagomedov-cropped_1ldlgbf0wyd3u1eauhuzzkt3yp.jpg')] tracking-widest"
-              style={contentStyle}
-            >
-              ❝ GO HARD or GO HOME ❞
-            </h3>
-          </div>
-          <div>
-            <h3
-              className="md:text-3xl grayscale text-md bg-fixed bg-no-repeat bg-cover bg-[url('https://i.guim.co.uk/img/media/1914975a01a04898b32a2da113f4ab581399f776/0_32_2602_1562/master/2602..jpg?width=1200&height=630&quality=85&auto=format&fit=crop&overlay-align=bottom%2Cleft&overlay-width=100p&overlay-base64=L2ltZy9zdGF0aWMvb3ZlcmxheXMvdGctZGVmYXVsdC5wbmc&s=623b14a9df8c9f77148024b0b71c9c99')] bg-top tracking-widest"
-              style={contentStyle}
-            >
-              ❝ TRUST YOURSELF AND CONQUER ❞
-            </h3>
-          </div>
-        </Carousel>
-
-        <h1 className="text-2xl mt-5 mb-0 px-4 text-center heading">
-          Hello {userData.name} 👋
-        </h1>
-
-        <div className="mb-0">
-          <h1 className="text-3xl tracking-widest text-gray-600 text-center mb-0 py-4 px-4 heading">
-            ❛ Welcome to{" "}
-            <span className="font-semibold text-primaryButton">
-              OX-Strength Training Ground{" "}
-            </span>
-            ❜
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <h1 className="text-3xl font-semibold mt-5 mb-2 text-center text-gray-800 animate__animated animate__fadeIn">
+            Hello {userData.name} 👋
           </h1>
-        </div>
 
-        {/* User profile card */}
-        <div className="md:flex md:flex-col md:pb-5 md:items-center">
-          <Card className="h-fitcontent md:w-8/12 md:py-3 py-2 bg-navcolor rounded-3xl md:mt-11 shadow-lg">
-            <h1 className="text-2xl mt-5 px-10 text-center">User Profile</h1>
-
-            <div className="md:flex justify-center">
-              <div className="py-6 tablet:flex hidden flex-shrink-0">
-                <div className="w-64 h-64 bg-gray-100 rounded-full flex items-center justify-center">
-                  <img
-                    src="/icons/User.svg"
-                    alt="User"
-                    className="w-48 h-48"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src =
-                        "https://cdn-icons-png.flaticon.com/512/1077/1077114.png";
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="py-6 md:py-10 px-10">
-                <p className="text-lg items-center flex text-center md:text-left mb-4">
-                  <img
-                    className="px-4"
-                    style={{ height: "30px" }}
-                    src="https://cdn-icons-png.flaticon.com/512/1759/1759311.png"
-                    alt="Name"
-                  />
-                  <span className="font-medium">Name:</span>
-                  <span className="ml-2">{userData.name}</span>
-                </p>
-
-                <p className="text-lg items-center flex text-center md:text-left mb-4">
-                  <img
-                    className="px-4"
-                    style={{ height: "30px" }}
-                    src="https://cdn-icons-png.flaticon.com/512/6938/6938604.png"
-                    alt="Date of birth"
-                  />
-                  <span className="font-medium">Date of birth:</span>
-                  <span className="ml-2">
-                    {userData.dob ? userData.dob.slice(0, 10) : "Not specified"}
-                  </span>
-                  <button
-                    onClick={showDateModal}
-                    className="ml-3 text-blue-500 hover:underline text-sm cursor-pointer"
-                  >
-                    Edit
-                  </button>
-                </p>
-
-                <p className="text-lg items-center flex text-center md:text-left mb-4">
-                  <img
-                    className="px-4"
-                    style={{ height: "30px" }}
-                    src="https://cdn-icons.flaticon.com/png/128/3746/premium/3746552.png?token=exp=1646651311~hmac=022cda9eb744ac2545aaaed68df57b52"
-                    alt="Weight"
-                  />
-                  <span className="font-medium">Weight:</span>
-                  <span className="ml-2">{userData.weight} kg</span>
-                </p>
-
-                <p className="text-lg items-center flex text-center md:text-left mb-4">
-                  <img
-                    className="px-4"
-                    style={{ height: "30px" }}
-                    src="https://cdn-icons-png.flaticon.com/512/5559/5559879.png"
-                    alt="Height"
-                  />
-                  <span className="font-medium">Height:</span>
-                  <span className="ml-2">{userData.height} cm</span>
-                </p>
-
-                <Link to="/Notes">
-                  <p className="text-lg items-center flex text-center md:text-left mb-4 cursor-pointer">
-                    <img
-                      className="px-4"
-                      style={{ height: "30px" }}
-                      src="https://cdn-icons.flaticon.com/png/512/3131/premium/3131619.png?token=exp=1646652052~hmac=f88c88b1c84bc9969de1af48de746c2f"
-                      alt="Notes"
-                    />
-                    <span className="font-medium">Your Notes</span>
-                    <span className="ml-2 text-blue-500">Check</span>
-                  </p>
-                </Link>
-
-                <div className="hidden items-center md:flex md:text-lg md:text-left">
-                  <img
-                    className="px-4"
-                    style={{ height: "30px" }}
-                    src="https://cdn-icons-png.flaticon.com/512/752/752687.png"
-                    alt="User ID"
-                  />
-                  <span className="font-medium">User ID:</span>
-                  <Paragraph
-                    style={{ fontSize: "15px", paddingTop: "13px" }}
-                    copyable
-                  >
-                    {userData.userId}
-                  </Paragraph>
-                </div>
-              </div>
-            </div>
-
-            <Divider className="border-solid">
-              <span className="text-base leading-6 opacity-70 font-roboto">
-                Edit Profile
+          <div className="mb-4">
+            <h1 className="text-3xl tracking-wide text-gray-700 text-center py-2 font-light">
+              Welcome to{" "}
+              <span className="font-bold text-indigo-600 bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-600">
+                OX-Strength Training Ground
               </span>
-            </Divider>
-
-            <div className="px-12">
-              <div className="mb-6">
-                <h1 className="text-xl mb-3">Change your plan</h1>
-                <Radio.Group
-                  name="radiogroup"
-                  onChange={handleGoalChange}
-                  value={userData.goal}
-                >
-                  <Radio value="Fat Loss">Lose Weight</Radio>
-                  <Radio value="Get Fit">Get Fit</Radio>
-                  <Radio value="Build Muscle">Build Muscle</Radio>
-                </Radio.Group>
-              </div>
-
-              <div className="mb-6">
-                <div className="md:flex md:pt-2 items-center">
-                  <p className="mt-3 md:pr-4 text-lg">Weight:</p>
-                  <div>
-                    <Input
-                      type="number"
-                      value={weightInput}
-                      onChange={(e) => setWeightInput(e.target.value)}
-                      onKeyPress={(event) => {
-                        if (!/[0-9]/.test(event.key)) {
-                          event.preventDefault();
-                        }
-                      }}
-                      style={{
-                        borderRadius: "10px",
-                      }}
-                      allowClear
-                      placeholder="Weight/KGS"
-                    />
-                  </div>
-
-                  <p className="mt-3 md:px-4 text-lg">Height:</p>
-                  <div>
-                    <Input
-                      type="number"
-                      value={heightInput}
-                      onChange={(e) => setHeightInput(e.target.value)}
-                      onKeyPress={(event) => {
-                        if (!/[0-9]/.test(event.key)) {
-                          event.preventDefault();
-                        }
-                      }}
-                      style={{
-                        borderRadius: "10px",
-                      }}
-                      allowClear
-                      placeholder="Height/cm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-3 mb-6">
-                <Button
-                  style={{
-                    backgroundColor: "#607fe8",
-                    borderRadius: "10px",
-                    height: "45px",
-                    boxShadow: "1px 1px grey",
-                    border: "none",
-                    padding: "0 20px",
-                  }}
-                  onClick={updateHeightWeight}
-                  className="hover:opacity-90"
-                >
-                  <p className="text-lg text-white">Save Changes</p>
-                </Button>
-
-                <Button
-                  style={{
-                    backgroundColor: "#607fe8",
-                    borderRadius: "10px",
-                    height: "45px",
-                    boxShadow: "1px 1px grey",
-                    border: "none",
-                    padding: "0 20px",
-                  }}
-                  onClick={showModal}
-                  className="hover:opacity-90"
-                >
-                  <p className="text-lg text-white">Health Conditions</p>
-                </Button>
-
-                <Button
-                  style={{
-                    backgroundColor: "#607fe8",
-                    borderRadius: "10px",
-                    height: "45px",
-                    boxShadow: "1px 1px grey",
-                    border: "none",
-                    padding: "0 20px",
-                  }}
-                  onClick={showMeasureModal}
-                  className="hover:opacity-90"
-                >
-                  <p className="text-lg text-white">Body Measurements</p>
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap pt-3 flex-col">
-                <button
-                  className="text-center text-red-500 cursor-pointer hover:text-red-700"
-                  onClick={deactivateAccount}
-                >
-                  Deactivate account
-                </button>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Body metric section */}
-        <div className="px-5 py-3 pb-6 bg-fixed bg-no-repeat bg-cover bg-top tablet:bg-[url('https://wallpaperaccess.com/full/2079529.jpg')]">
-          <h1 className="text-3xl drop-shadow-2xl md:pt-6 tablet:text-white px-10 text-center">
-            Body Metrics
-          </h1>
-
-          <div className="md:flex md:flex-col md:items-center">
-            <Chart />
+            </h1>
           </div>
 
-          <div className="md:flex md:flex-col md:items-center">
-            <Card className="h-fitcontent md:w-8/12 px-9 md:pb-6 md:bg-navcolor rounded-3xl drop-shadow-2xl md:mt-11">
-              <h1 className="text-xl mt-5 px-1">Calculate BMI</h1>
+          {/* User profile card */}
+          <div className="flex flex-col items-center mb-10">
+            <Card
+              className="w-full md:w-4/5 lg:w-3/4 bg-white rounded-xl shadow-xl transition-all duration-300 hover:shadow-2xl"
+              bodyStyle={{ padding: "28px" }}
+            >
+              <h1 className="text-2xl font-semibold mb-6 text-gray-800 text-center border-b border-gray-100 pb-4">
+                User Profile
+              </h1>
 
-              <div className="md:flex md:pt-2 items-center">
-                <p className="mt-3 md:pr-4 text-lg">Weight:</p>
-                <div>
-                  <Input
-                    type="number"
-                    value={weightInput}
-                    onChange={(e) => setWeightInput(e.target.value)}
-                    onKeyPress={(event) => {
-                      if (!/[0-9]/.test(event.key)) {
-                        event.preventDefault();
-                      }
-                    }}
-                    style={{
-                      borderRadius: "10px",
-                    }}
-                    allowClear
-                    placeholder="Weight/KGS"
-                  />
+              <div className="flex flex-col md:flex-row justify-between">
+                <div className="hidden md:flex md:flex-shrink-0 md:items-center md:justify-center md:mr-8">
+                  <div className="w-56 h-56 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full flex items-center justify-center shadow-inner">
+                    <img
+                      src="/icons/User.svg"
+                      alt="User"
+                      className="w-40 h-40 opacity-90"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src =
+                          "https://cdn-icons-png.flaticon.com/512/1077/1077114.png";
+                      }}
+                    />
+                  </div>
                 </div>
 
-                <p className="mt-3 md:px-4 text-lg">Height:</p>
-                <div>
-                  <Input
-                    type="number"
-                    value={heightInput}
-                    onChange={(e) => setHeightInput(e.target.value)}
-                    onKeyPress={(event) => {
-                      if (!/[0-9]/.test(event.key)) {
-                        event.preventDefault();
-                      }
-                    }}
-                    style={{
-                      borderRadius: "10px",
-                    }}
-                    allowClear
-                    placeholder="Height/cm"
-                  />
+                <div className="flex-grow">
+                  <div className="space-y-5">
+                    <p className="flex items-center text-lg text-gray-700">
+                      <UserOutlined className="text-xl text-indigo-500 mr-4" />
+                      <span className="font-medium w-32">Name:</span>
+                      <span className="text-gray-800">{userData.name}</span>
+                    </p>
+
+                    <p className="flex items-center text-lg text-gray-700">
+                      <CalendarOutlined className="text-xl text-indigo-500 mr-4" />
+                      <span className="font-medium w-32">Date of birth:</span>
+                      <span className="text-gray-800">
+                        {userData.dob
+                          ? userData.dob.slice(0, 10)
+                          : "Not specified"}
+                      </span>
+                      <button
+                        onClick={showDateModal}
+                        className="ml-4 text-blue-500 hover:text-blue-700 hover:underline transition-colors duration-200 text-sm cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                    </p>
+
+                    <p className="flex items-center text-lg text-gray-700">
+                      <LineChartOutlined className="text-xl text-indigo-500 mr-4" />
+                      <span className="font-medium w-32">Weight:</span>
+                      <span className="text-gray-800">
+                        {userData.weight} kg
+                      </span>
+                    </p>
+
+                    <p className="flex items-center text-lg text-gray-700">
+                      <ColumnHeightOutlined className="text-xl text-indigo-500 mr-4" />
+                      <span className="font-medium w-32">Height:</span>
+                      <span className="text-gray-800">
+                        {userData.height} cm
+                      </span>
+                    </p>
+
+                    <Link to="/Notes" className="block">
+                      <p className="flex items-center text-lg text-gray-700 hover:text-indigo-600 transition-colors duration-200">
+                        <FileTextOutlined className="text-xl text-indigo-500 mr-4" />
+                        <span className="font-medium w-32">Your Notes</span>
+                        <span className="text-blue-500 hover:underline">
+                          Check
+                        </span>
+                      </p>
+                    </Link>
+
+                    <div className="hidden md:flex items-center text-lg text-gray-700">
+                      <IdcardOutlined className="text-xl text-indigo-500 mr-4" />
+                      <span className="font-medium w-32">User ID:</span>
+                      <Paragraph
+                        style={{ marginBottom: 0, paddingTop: "2px" }}
+                        copyable={{ tooltips: ["Copy ID", "Copied!"] }}
+                      >
+                        {userData.userId}
+                      </Paragraph>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <p className="mt-3 text-lg">
-                BMI: {BMI}
-                {BMI && (
-                  <Popover content={bmiPopoverContent} title="BMI Information">
-                    <Button type="primary" className="ml-3">
-                      Tips
-                    </Button>
-                  </Popover>
-                )}
-              </p>
+              <Divider className="my-6">
+                <span className="text-base text-gray-500 font-medium px-4">
+                  Edit Profile
+                </span>
+              </Divider>
 
-              <div className="flex flex-wrap justify-evenly mt-4">
-                <Button
-                  style={{
-                    backgroundColor: "#607fe8",
-                    borderRadius: "10px",
-                    height: "50px",
-                    width: "135px",
-                    boxShadow: "1px 1px grey",
-                    border: "none",
-                  }}
-                  onClick={showMeasureModal}
-                  className="hover:opacity-90"
-                >
-                  <p className="text-lg text-white">Measurement</p>
-                </Button>
+              <div className="px-4">
+                <div className="mb-8">
+                  <h2 className="text-xl font-medium text-gray-800 mb-4">
+                    Change your fitness goal
+                  </h2>
+                  <Radio.Group
+                    name="radiogroup"
+                    onChange={handleGoalChange}
+                    value={userData.goal}
+                    className="space-x-6"
+                    size="large"
+                  >
+                    <Radio value="Fat Loss" className="text-base">
+                      Lose Weight
+                    </Radio>
+                    <Radio value="Get Fit" className="text-base">
+                      Get Fit
+                    </Radio>
+                    <Radio value="Build Muscle" className="text-base">
+                      Build Muscle
+                    </Radio>
+                  </Radio.Group>
+                </div>
 
-                <Button
-                  style={{
-                    backgroundColor: "#607fe8",
-                    borderRadius: "10px",
-                    height: "50px",
-                    width: "135px",
-                    boxShadow: "1px 1px grey",
-                    border: "none",
-                  }}
-                  onClick={calculateBMI}
-                  className="hover:opacity-90"
-                >
-                  <p className="text-lg text-white">Calculate BMI</p>
-                </Button>
+                <div className="mb-8">
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="block text-lg font-medium text-gray-700">
+                        Weight:
+                      </label>
+                      <div className="flex flex-col">
+                        <Input
+                          type="number"
+                          value={weightInput}
+                          onChange={(e) => validateWeight(e.target.value)}
+                          style={{
+                            borderRadius: "12px",
+                            height: "50px",
+                            fontSize: "16px",
+                          }}
+                          status={weightError ? "error" : ""}
+                          allowClear
+                          placeholder="Weight in kg"
+                          prefix={
+                            <LineChartOutlined className="text-indigo-500 mr-2" />
+                          }
+                        />
+                        {weightError && (
+                          <div className="text-red-500 text-sm mt-1">
+                            {weightError}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-lg font-medium text-gray-700">
+                        Height:
+                      </label>
+                      <div className="flex flex-col">
+                        <Input
+                          type="number"
+                          value={heightInput}
+                          onChange={(e) => validateHeight(e.target.value)}
+                          style={{
+                            borderRadius: "12px",
+                            height: "50px",
+                            fontSize: "16px",
+                          }}
+                          status={heightError ? "error" : ""}
+                          allowClear
+                          placeholder="Height in cm"
+                          prefix={
+                            <ColumnHeightOutlined className="text-indigo-500 mr-2" />
+                          }
+                        />
+                        {heightError && (
+                          <div className="text-red-500 text-sm mt-1">
+                            {heightError}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-4 mb-8">
+                  <Button
+                    style={{
+                      background: "linear-gradient(to right, #4f46e5, #6366f1)",
+                      borderRadius: "12px",
+                      height: "48px",
+                      border: "none",
+                      padding: "0 24px",
+                      boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.4)",
+                    }}
+                    onClick={updateHeightWeight}
+                    className="hover:opacity-90 transition-opacity duration-200"
+                  >
+                    <p className="text-base font-medium text-white">
+                      Save Changes
+                    </p>
+                  </Button>
+
+                  <Button
+                    style={{
+                      background: "linear-gradient(to right, #4f46e5, #6366f1)",
+                      borderRadius: "12px",
+                      height: "48px",
+                      border: "none",
+                      padding: "0 24px",
+                      boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.4)",
+                    }}
+                    onClick={showModal}
+                    className="hover:opacity-90 transition-opacity duration-200"
+                  >
+                    <p className="text-base font-medium text-white">
+                      Health Conditions
+                    </p>
+                  </Button>
+
+                  <Button
+                    style={{
+                      background: "linear-gradient(to right, #4f46e5, #6366f1)",
+                      borderRadius: "12px",
+                      height: "48px",
+                      border: "none",
+                      padding: "0 24px",
+                      boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.4)",
+                    }}
+                    onClick={showMeasureModal}
+                    className="hover:opacity-90 transition-opacity duration-200"
+                  >
+                    <p className="text-base font-medium text-white">
+                      Body Measurements
+                    </p>
+                  </Button>
+                </div>
+
+                <div className="flex flex-wrap pt-3 flex-col">
+                  <button
+                    className="text-center text-red-500 font-medium transition-colors duration-200 cursor-pointer hover:text-red-700"
+                    onClick={deactivateAccount}
+                  >
+                    Deactivate account
+                  </button>
+                </div>
               </div>
             </Card>
+          </div>
+
+          {/* Body metric section */}
+          <div className="py-6 bg-gradient-to-b from-gray-100 to-gray-200 rounded-2xl shadow-inner mb-10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <h1 className="text-3xl font-bold mb-8 text-gray-800 text-center">
+                Body Metrics
+              </h1>
+
+              <div className="flex flex-col items-center mb-10">
+                <Chart />
+              </div>
+
+              <div className="flex flex-col items-center">
+                <Card
+                  className="w-full md:w-4/5 lg:w-3/4 bg-white rounded-xl shadow-xl"
+                  bodyStyle={{ padding: "28px" }}
+                >
+                  <h2 className="text-2xl font-semibold mb-6 text-gray-800">
+                    Calculate BMI
+                  </h2>
+
+                  <div className="grid md:grid-cols-2 gap-6 mb-6">
+                    <div className="space-y-2">
+                      <label className="block text-lg font-medium text-gray-700">
+                        Weight:
+                      </label>
+                      <div className="flex flex-col">
+                        <Input
+                          type="number"
+                          value={weightInput}
+                          onChange={(e) => validateWeight(e.target.value)}
+                          style={{
+                            borderRadius: "12px",
+                            height: "50px",
+                            fontSize: "16px",
+                          }}
+                          status={weightError ? "error" : ""}
+                          allowClear
+                          placeholder="Weight in kg"
+                          prefix={
+                            <LineChartOutlined className="text-indigo-500 mr-2" />
+                          }
+                        />
+                        {weightError && (
+                          <div className="text-red-500 text-sm mt-1">
+                            {weightError}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-lg font-medium text-gray-700">
+                        Height:
+                      </label>
+                      <div className="flex flex-col">
+                        <Input
+                          type="number"
+                          value={heightInput}
+                          onChange={(e) => validateHeight(e.target.value)}
+                          style={{
+                            borderRadius: "12px",
+                            height: "50px",
+                            fontSize: "16px",
+                          }}
+                          status={heightError ? "error" : ""}
+                          allowClear
+                          placeholder="Height in cm"
+                          prefix={
+                            <ColumnHeightOutlined className="text-indigo-500 mr-2" />
+                          }
+                        />
+                        {heightError && (
+                          <div className="text-red-500 text-sm mt-1">
+                            {heightError}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center mb-6">
+                    <p className="text-xl font-medium mr-3">BMI:</p>
+                    <span
+                      className={`text-xl font-bold ${
+                        BMI <= 18.5
+                          ? "text-blue-600"
+                          : BMI <= 24.9
+                          ? "text-green-600"
+                          : BMI < 30
+                          ? "text-orange-500"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {BMI || "—"}
+                    </span>
+                    {BMI && (
+                      <Popover
+                        content={bmiPopoverContent}
+                        title={
+                          <span className="font-medium">BMI Information</span>
+                        }
+                        placement="right"
+                      >
+                        <Button
+                          type="primary"
+                          className="ml-4"
+                          style={{
+                            borderRadius: "8px",
+                            background:
+                              "linear-gradient(to right, #4f46e5, #6366f1)",
+                          }}
+                        >
+                          Health Tips
+                        </Button>
+                      </Popover>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-4">
+                    <Button
+                      style={{
+                        background:
+                          "linear-gradient(to right, #4f46e5, #6366f1)",
+                        borderRadius: "12px",
+                        height: "48px",
+                        border: "none",
+                        padding: "0 24px",
+                        boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.4)",
+                      }}
+                      onClick={showMeasureModal}
+                      className="hover:opacity-90 transition-opacity duration-200"
+                    >
+                      <p className="text-base font-medium text-white">
+                        Body Measurements
+                      </p>
+                    </Button>
+
+                    <Button
+                      style={{
+                        background:
+                          "linear-gradient(to right, #4f46e5, #6366f1)",
+                        borderRadius: "12px",
+                        height: "48px",
+                        border: "none",
+                        padding: "0 24px",
+                        boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.4)",
+                      }}
+                      onClick={calculateBMI}
+                      className="hover:opacity-90 transition-opacity duration-200"
+                    >
+                      <p className="text-base font-medium text-white">
+                        Calculate BMI
+                      </p>
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Health Conditions Modal */}
         <Modal
-          title="Select Health Conditions"
+          title={<span className="text-xl font-medium">Health Conditions</span>}
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
           width={600}
+          centered
+          bodyStyle={{ padding: "24px" }}
         >
-          <p className="text-pink-900 text-xl mb-4">
+          <p className="text-lg font-medium text-purple-900 mb-4">
             Please select all your health conditions:
           </p>
-          <p className="text-sky-600 mb-4">
-            If your health condition is not listed below please consult your
+          <p className="text-blue-600 mb-6 text-sm">
+            If your health condition is not listed below, please consult your
             trainer or doctor!
           </p>
 
           <Select
             mode="multiple"
             allowClear
-            style={{ width: "100%" }}
-            placeholder="Please select"
+            style={{ width: "100%", borderRadius: "8px" }}
+            placeholder="Select health conditions"
             value={selectedConditions}
             onChange={handleHealthConditionChange}
+            size="large"
+            dropdownStyle={{ borderRadius: "8px" }}
           >
             {healthConditions.map((condition) => (
               <Option
@@ -913,15 +1019,17 @@ const Dashboard = () => {
 
         {/* Body Measurements Modal */}
         <Modal
-          title="Body Measurements"
+          title={<span className="text-xl font-medium">Body Measurements</span>}
           open={isMeasureModalVisible}
           onOk={handleMeasureModalOk}
           onCancel={handleMeasureModalCancel}
           width={600}
           footer={null}
+          centered
+          bodyStyle={{ padding: "24px" }}
         >
-          <p className="text-pink-900 text-lg mb-4">
-            Please measure all muscles given below! Measure in centimeters
+          <p className="text-lg font-medium text-purple-900 mb-6">
+            Enter your body measurements in centimeters
           </p>
 
           <Form
@@ -939,143 +1047,216 @@ const Dashboard = () => {
             }}
             onFinish={updateBodyMeasurements}
           >
-            <Form.Item
-              label="Neck size (cm)"
-              name="neck"
-              rules={[
-                { required: true, message: "Please enter your Neck Size!" },
-              ]}
-            >
-              <Input
-                type="number"
-                size="middle"
-                style={{
-                  borderRadius: "10px",
-                  fontSize: "17px",
-                }}
-                placeholder="Neck size"
-              />
-            </Form.Item>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+              <Form.Item
+                label={
+                  <span className="text-base font-medium">Neck size (cm)</span>
+                }
+                name="neck"
+                rules={[
+                  { required: true, message: "Please enter your neck size!" },
+                  {
+                    type: "number",
+                    min: 1,
+                    max: 300,
+                    message: "Please enter a valid measurement (1-300 cm)",
+                  },
+                ]}
+              >
+                <Input
+                  type="number"
+                  size="large"
+                  style={{
+                    borderRadius: "10px",
+                    fontSize: "16px",
+                  }}
+                  placeholder="Neck size"
+                />
+              </Form.Item>
 
-            <Form.Item
-              label="Shoulder size (cm)"
-              name="shoulder"
-              rules={[
-                { required: true, message: "Please enter your Shoulder size!" },
-              ]}
-            >
-              <Input
-                type="number"
-                size="middle"
-                style={{
-                  borderRadius: "10px",
-                  fontSize: "17px",
-                }}
-                placeholder="Shoulder size"
-              />
-            </Form.Item>
+              <Form.Item
+                label={
+                  <span className="text-base font-medium">
+                    Shoulder size (cm)
+                  </span>
+                }
+                name="shoulder"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please enter your shoulder size!",
+                  },
+                  {
+                    type: "number",
+                    min: 1,
+                    max: 300,
+                    message: "Please enter a valid measurement (1-300 cm)",
+                  },
+                ]}
+              >
+                <Input
+                  type="number"
+                  size="large"
+                  style={{
+                    borderRadius: "10px",
+                    fontSize: "16px",
+                  }}
+                  placeholder="Shoulder size"
+                />
+              </Form.Item>
 
-            <Form.Item
-              label="Forearm size (cm)"
-              name="forearm"
-              rules={[
-                { required: true, message: "Please enter your Forearm size!" },
-              ]}
-            >
-              <Input
-                type="number"
-                size="middle"
-                style={{
-                  borderRadius: "10px",
-                  fontSize: "17px",
-                }}
-                placeholder="Forearm size"
-              />
-            </Form.Item>
+              <Form.Item
+                label={
+                  <span className="text-base font-medium">
+                    Forearm size (cm)
+                  </span>
+                }
+                name="forearm"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please enter your forearm size!",
+                  },
+                  {
+                    type: "number",
+                    min: 1,
+                    max: 300,
+                    message: "Please enter a valid measurement (1-300 cm)",
+                  },
+                ]}
+              >
+                <Input
+                  type="number"
+                  size="large"
+                  style={{
+                    borderRadius: "10px",
+                    fontSize: "16px",
+                  }}
+                  placeholder="Forearm size"
+                />
+              </Form.Item>
 
-            <Form.Item
-              label="Biceps size (cm)"
-              name="biceps"
-              rules={[
-                { required: true, message: "Please enter your Biceps size!" },
-              ]}
-            >
-              <Input
-                type="number"
-                size="middle"
-                style={{
-                  borderRadius: "10px",
-                  fontSize: "17px",
-                }}
-                placeholder="Biceps size"
-              />
-            </Form.Item>
+              <Form.Item
+                label={
+                  <span className="text-base font-medium">
+                    Biceps size (cm)
+                  </span>
+                }
+                name="biceps"
+                rules={[
+                  { required: true, message: "Please enter your biceps size!" },
+                  {
+                    type: "number",
+                    min: 1,
+                    max: 300,
+                    message: "Please enter a valid measurement (1-300 cm)",
+                  },
+                ]}
+              >
+                <Input
+                  type="number"
+                  size="large"
+                  style={{
+                    borderRadius: "10px",
+                    fontSize: "16px",
+                  }}
+                  placeholder="Biceps size"
+                />
+              </Form.Item>
 
-            <Form.Item
-              label="Hip size (cm)"
-              name="hip"
-              rules={[
-                { required: true, message: "Please enter your Hip size!" },
-              ]}
-            >
-              <Input
-                type="number"
-                size="middle"
-                style={{
-                  borderRadius: "10px",
-                  fontSize: "17px",
-                }}
-                placeholder="Hip size"
-              />
-            </Form.Item>
+              <Form.Item
+                label={
+                  <span className="text-base font-medium">Hip size (cm)</span>
+                }
+                name="hip"
+                rules={[
+                  { required: true, message: "Please enter your hip size!" },
+                  {
+                    type: "number",
+                    min: 1,
+                    max: 300,
+                    message: "Please enter a valid measurement (1-300 cm)",
+                  },
+                ]}
+              >
+                <Input
+                  type="number"
+                  size="large"
+                  style={{
+                    borderRadius: "10px",
+                    fontSize: "16px",
+                  }}
+                  placeholder="Hip size"
+                />
+              </Form.Item>
 
-            <Form.Item
-              label="Thigh size (cm)"
-              name="thigh"
-              rules={[
-                { required: true, message: "Please enter your Thigh size!" },
-              ]}
-            >
-              <Input
-                type="number"
-                size="middle"
-                style={{
-                  borderRadius: "10px",
-                  fontSize: "17px",
-                }}
-                placeholder="Thigh size"
-              />
-            </Form.Item>
+              <Form.Item
+                label={
+                  <span className="text-base font-medium">Thigh size (cm)</span>
+                }
+                name="thigh"
+                rules={[
+                  { required: true, message: "Please enter your thigh size!" },
+                  {
+                    type: "number",
+                    min: 1,
+                    max: 300,
+                    message: "Please enter a valid measurement (1-300 cm)",
+                  },
+                ]}
+              >
+                <Input
+                  type="number"
+                  size="large"
+                  style={{
+                    borderRadius: "10px",
+                    fontSize: "16px",
+                  }}
+                  placeholder="Thigh size"
+                />
+              </Form.Item>
 
-            <Form.Item
-              label="Calves size (cm)"
-              name="claves"
-              rules={[
-                { required: true, message: "Please enter your Calves size!" },
-              ]}
-            >
-              <Input
-                type="number"
-                size="middle"
-                style={{
-                  borderRadius: "10px",
-                  fontSize: "17px",
-                }}
-                placeholder="Calves size"
-              />
-            </Form.Item>
+              <Form.Item
+                label={
+                  <span className="text-base font-medium">
+                    Calves size (cm)
+                  </span>
+                }
+                name="claves"
+                rules={[
+                  { required: true, message: "Please enter your calves size!" },
+                  {
+                    type: "number",
+                    min: 1,
+                    max: 300,
+                    message: "Please enter a valid measurement (1-300 cm)",
+                  },
+                ]}
+              >
+                <Input
+                  type="number"
+                  size="large"
+                  style={{
+                    borderRadius: "10px",
+                    fontSize: "16px",
+                  }}
+                  placeholder="Calves size"
+                />
+              </Form.Item>
+            </div>
 
-            <Form.Item>
+            <Form.Item className="mt-4">
               <Button
                 type="primary"
                 htmlType="submit"
                 size="large"
-                className="login"
                 style={{
-                  borderRadius: "15px",
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  boxShadow: "3px 3px rgba(0, 0, 0, 0.15)",
+                  height: "50px",
+                  fontSize: "16px",
+                  fontWeight: "500",
+                  borderRadius: "12px",
+                  background: "linear-gradient(to right, #4f46e5, #6366f1)",
+                  boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.5)",
                 }}
                 block
               >

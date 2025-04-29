@@ -33,7 +33,7 @@ export const registerController = async (req, res) => {
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password);
 
     // Insert user with verification token - use the correct column names
     const result = await con.query(
