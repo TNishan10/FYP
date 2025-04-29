@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import moment from "moment";
 import {
   Button,
   Modal,
@@ -15,6 +16,8 @@ import {
   DatePicker,
   Card,
   Spin,
+  Space,
+  Tag,
 } from "antd";
 import { toast } from "react-toastify";
 import Chart from "../components/Charts/Chart.jsx";
@@ -59,6 +62,10 @@ const Dashboard = () => {
   const [healthConditions, setHealthConditions] = useState([]);
   const [selectedConditions, setSelectedConditions] = useState([]);
 
+  // Custom health conditions
+  const [customCondition, setCustomCondition] = useState("");
+  const [customConditions, setCustomConditions] = useState([]);
+
   // Temp form values
   const [heightInput, setHeightInput] = useState("");
   const [weightInput, setWeightInput] = useState("");
@@ -69,9 +76,134 @@ const Dashboard = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isMeasureModalVisible, setIsMeasureModalVisible] = useState(false);
   const [isDateModalVisible, setIsDateModalVisible] = useState(false);
+  const [isNotesModalVisible, setIsNotesModalVisible] = useState(false);
+  const [userNotes, setUserNotes] = useState("");
 
+  const [isEditMode, setIsEditMode] = useState(false);
+  // Add at the beginning of the component after other state declarations
+  const [editableUserData, setEditableUserData] = useState({
+    name: "",
+    dob: "",
+    weight: "",
+    height: "",
+  });
+
+  // Add inside the component to handle editable fields
+  const handleEditFieldChange = (field, value) => {
+    setEditableUserData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Add this useEffect to update editable data when isEditMode changes
+  useEffect(() => {
+    if (isEditMode) {
+      setEditableUserData({
+        name: userData.name,
+        dob: userData.dob,
+        weight: userData.weight,
+        height: userData.height,
+      });
+    }
+  }, [isEditMode, userData]);
+
+  // Add this function to save edited profile
+  const saveEditedProfile = async () => {
+    try {
+      setLoading(true);
+      const userId = localStorage.getItem("userId");
+      const token = sessionStorage.getItem("token");
+
+      // Update user basic info if name changed
+      if (editableUserData.name !== userData.name) {
+        await axios.put(
+          `http://localhost:8000/api/v1/auth/users/${userId}`,
+          { user_name: editableUserData.name },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
+      const userInfoResponse = await axios.get(
+        `http://localhost:8000/api/v1/auth/users/${userId}/info`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (userInfoResponse.data.success) {
+        // Get the user_info_id from the response
+        const userInfoId = userInfoResponse.data.data.user_info_id;
+
+        // Update other user info fields
+        const updateData = {};
+        if (editableUserData.weight)
+          updateData.weight = editableUserData.weight;
+        if (editableUserData.height)
+          updateData.height = editableUserData.height;
+        if (editableUserData.dob) updateData.dob = editableUserData.dob;
+
+        if (Object.keys(updateData).length > 0) {
+          await axios.put(
+            `http://localhost:8000/api/v1/auth/user-info/${userInfoId}`, // Use userInfoId instead of userId
+            updateData,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+        }
+
+        // Update local userData state
+        setUserData((prev) => ({
+          ...prev,
+          name: editableUserData.name,
+          weight: editableUserData.weight || prev.weight,
+          height: editableUserData.height || prev.height,
+          dob: editableUserData.dob || prev.dob,
+        }));
+
+        toast.success("Profile updated successfully");
+        setIsEditMode(false);
+      } else {
+        toast.error("Could not find user information");
+      }
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error(
+        `Failed to update profile: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
   // Fetch user data
   useEffect(() => {
+    const fetchNumericUserId = async () => {
+      try {
+        const userId = localStorage.getItem("userId");
+        const token = sessionStorage.getItem("token");
+
+        const response = await axios.get(
+          `http://localhost:8000/api/v1/auth/user-numeric-id/${userId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.data.success && response.data.numericId) {
+          localStorage.setItem("numericUserId", response.data.numericId);
+        }
+      } catch (err) {
+        console.error("Could not fetch numeric ID", err);
+      }
+    };
     const fetchUserData = async () => {
       try {
         setLoading(true);
@@ -217,6 +349,7 @@ const Dashboard = () => {
   const showModal = () => setIsModalVisible(true);
   const showMeasureModal = () => setIsMeasureModalVisible(true);
   const showDateModal = () => setIsDateModalVisible(true);
+  const showNotesModal = () => setIsNotesModalVisible(true);
 
   const handleModalOk = async () => {
     try {
@@ -248,13 +381,63 @@ const Dashboard = () => {
   const handleMeasureModalOk = () => setIsMeasureModalVisible(false);
   const handleDateModalOk = () => setIsDateModalVisible(false);
 
+  const handleNotesModalOk = async () => {
+    try {
+      const userId = localStorage.getItem("userId");
+      const token = sessionStorage.getItem("token");
+
+      await axios.post(
+        `http://localhost:8000/api/v1/auth/user-notes`,
+        {
+          user_id: userId,
+          notes: userNotes,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      toast.success("Notes saved successfully");
+      setIsNotesModalVisible(false);
+    } catch (error) {
+      console.error("Error saving notes:", error);
+      toast.error("Failed to save notes");
+    }
+  };
+
   const handleModalCancel = () => setIsModalVisible(false);
   const handleMeasureModalCancel = () => setIsMeasureModalVisible(false);
   const handleDateModalCancel = () => setIsDateModalVisible(false);
+  const handleNotesModalCancel = () => setIsNotesModalVisible(false);
 
   // Health condition handlers
   const handleHealthConditionChange = (values) => {
     setSelectedConditions(values);
+  };
+
+  // Custom health condition handlers
+  const handleAddCustomCondition = () => {
+    if (customCondition.trim() !== "") {
+      const newCondition = {
+        condition_id: `custom_${Date.now()}`,
+        condition_name: customCondition.trim(),
+        isCustom: true,
+      };
+
+      setCustomConditions([...customConditions, newCondition]);
+      setCustomCondition("");
+      toast.success("Custom health condition added");
+    }
+  };
+
+  const handleRemoveCustomCondition = (conditionToRemove) => {
+    setCustomConditions(
+      customConditions.filter(
+        (condition) => condition.condition_id !== conditionToRemove.condition_id
+      )
+    );
   };
 
   // Date change handler
@@ -307,7 +490,6 @@ const Dashboard = () => {
     }
   };
 
-  // Update height and weight
   const updateHeightWeight = async () => {
     // Validate inputs
     const isWeightValid = validateWeight(weightInput);
@@ -328,13 +510,31 @@ const Dashboard = () => {
       const userId = localStorage.getItem("userId");
       const token = sessionStorage.getItem("token");
 
+      // First get the user_info_id
+      const userInfoResponse = await axios.get(
+        `http://localhost:8000/api/v1/auth/users/${userId}/info`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!userInfoResponse.data.success) {
+        toast.error("Could not find user information");
+        return;
+      }
+
+      // Get the user_info_id from the response
+      const userInfoId = userInfoResponse.data.data.user_info_id;
+
       const updateData = {};
       if (weightInput) updateData.weight = weightInput;
       if (heightInput) updateData.height = heightInput;
 
-      // Update user info
+      // Update user info using the correct userInfoId
       await axios.put(
-        `http://localhost:8000/api/v1/auth/user-info/${userId}`,
+        `http://localhost:8000/api/v1/auth/user-info/${userInfoId}`,
         updateData,
         {
           headers: {
@@ -354,7 +554,11 @@ const Dashboard = () => {
       setWeightInput("");
     } catch (error) {
       console.error("Error updating body metrics:", error);
-      toast.error("Failed to update body metrics");
+      toast.error(
+        `Failed to update body metrics: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     } finally {
       setLoading(false);
     }
@@ -365,11 +569,38 @@ const Dashboard = () => {
     const newGoal = e.target.value;
 
     try {
+      setLoading(true);
       const userId = localStorage.getItem("userId");
       const token = sessionStorage.getItem("token");
 
-      await axios.put(
-        `http://localhost:8000/api/v1/auth/user-info/${userId}`,
+      if (!token) {
+        toast.error("Authentication required");
+        navigate("/login");
+        return;
+      }
+
+      // Step 1: Get the user info to obtain the user_info_id
+      const userInfoResponse = await axios.get(
+        `http://localhost:8000/api/v1/auth/users/${userId}/info`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Check if user info was found
+      if (!userInfoResponse.data.success) {
+        toast.error("User profile information not found");
+        return;
+      }
+
+      // Get the user_info_id from the response
+      const userInfoId = userInfoResponse.data.data.user_info_id;
+
+      // Step 2: Update the goal using the numeric user_info_id
+      const response = await axios.put(
+        `http://localhost:8000/api/v1/auth/user-info/${userInfoId}`,
         { goal: newGoal },
         {
           headers: {
@@ -378,11 +609,36 @@ const Dashboard = () => {
         }
       );
 
-      setUserData((prev) => ({ ...prev, goal: newGoal }));
-      toast.success("Fitness goal updated successfully");
+      if (response.data.success) {
+        setUserData((prev) => ({ ...prev, goal: newGoal }));
+        toast.success("Fitness goal updated successfully");
+      } else {
+        toast.error("Failed to update fitness goal");
+      }
     } catch (error) {
       console.error("Error updating goal:", error);
-      toast.error("Failed to update fitness goal");
+
+      if (error.response) {
+        console.error("Server responded with:", error.response.data);
+
+        if (error.response.status === 404) {
+          toast.error(
+            "User profile not found. Please complete your profile setup first."
+          );
+        } else {
+          toast.error(
+            `Failed to update fitness goal: ${
+              error.response?.data?.message || "Server error"
+            }`
+          );
+        }
+      } else if (error.request) {
+        toast.error("No response from server. Please check your connection.");
+      } else {
+        toast.error(`Error: ${error.message}`);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -391,19 +647,33 @@ const Dashboard = () => {
     try {
       // Validate measurements
       for (const key in values) {
+        // Convert to number first before validation
+        const numValue = Number(values[key]);
         if (
           values[key] &&
-          (isNaN(values[key]) || values[key] <= 0 || values[key] > 300)
+          (isNaN(numValue) || numValue <= 0 || numValue > 300)
         ) {
           toast.error(`Please enter a valid measurement for ${key} (1-300 cm)`);
           return;
         }
       }
-
       setLoading(true);
       const userId = localStorage.getItem("userId");
       const token = sessionStorage.getItem("token");
 
+      const userInfoResponse = await axios.get(
+        `http://localhost:8000/api/v1/auth/users/${userId}/info`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (!userInfoResponse.data.success) {
+        toast.error("Could not find user information");
+        return;
+      }
+      const userInfoId = userInfoResponse.data.data.user_info_id;
       const measurements = {
         neck_size: values.neck,
         shoulder_size: values.shoulder,
@@ -416,7 +686,7 @@ const Dashboard = () => {
 
       // Update user body measurements
       await axios.put(
-        `http://localhost:8000/api/v1/auth/user-info/${userId}`,
+        `http://localhost:8000/api/v1/auth/user-info/${userInfoId}`, // Use userInfoId instead of userId
         measurements,
         {
           headers: {
@@ -440,7 +710,11 @@ const Dashboard = () => {
       setIsMeasureModalVisible(false);
     } catch (error) {
       console.error("Error updating body measurements:", error);
-      toast.error("Failed to update body measurements");
+      toast.error(
+        `Failed to update measurements: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     } finally {
       setLoading(false);
     }
@@ -468,26 +742,72 @@ const Dashboard = () => {
     setBMI(bmiValue);
   };
 
-  // BMI interpretation content
+  // BMI interpretation content with program recommendations
   const bmiPopoverContent = (
     <div>
       {BMI <= 18.5 && (
-        <p className="text-blue-700">
-          Underweight. Consider starting a muscle building program.
-        </p>
+        <div>
+          <p className="text-blue-700 font-medium mb-2">Underweight</p>
+          <p className="mb-4">Your BMI indicates you're underweight.</p>
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="font-semibold text-blue-800 mb-1">
+              Recommended Program:
+            </p>
+            <p className="text-blue-700">
+              <strong>Muscle Building Program</strong> - Focus on strength
+              training and increasing your caloric intake with protein-rich
+              foods.
+            </p>
+          </div>
+        </div>
       )}
       {BMI > 18.5 && BMI <= 24.9 && (
-        <p className="text-green-600">Normal Weight. Perfect!</p>
+        <div>
+          <p className="text-green-600 font-medium mb-2">Normal Weight</p>
+          <p className="mb-4">Your BMI is in a healthy range.</p>
+          <div className="bg-green-50 p-3 rounded-lg">
+            <p className="font-semibold text-green-800 mb-1">
+              Recommended Program:
+            </p>
+            <p className="text-green-700">
+              <strong>General Fitness Program</strong> - Focus on maintaining
+              your weight with balanced workouts combining cardio and strength
+              training.
+            </p>
+          </div>
+        </div>
       )}
       {BMI > 25 && BMI < 29.9 && (
-        <p className="text-orange-500">
-          Overweight. Consider starting a weight loss program.
-        </p>
+        <div>
+          <p className="text-orange-500 font-medium mb-2">Overweight</p>
+          <p className="mb-4">Your BMI indicates you're overweight.</p>
+          <div className="bg-orange-50 p-3 rounded-lg">
+            <p className="font-semibold text-orange-800 mb-1">
+              Recommended Program:
+            </p>
+            <p className="text-orange-700">
+              <strong>Weight Management Program</strong> - Focus on caloric
+              deficit through cardio exercises and a balanced diet with portion
+              control.
+            </p>
+          </div>
+        </div>
       )}
       {BMI >= 30 && (
-        <p className="text-red-600">
-          Obesity. We suggest starting a fat loss program ASAP!
-        </p>
+        <div>
+          <p className="text-red-600 font-medium mb-2">Obesity</p>
+          <p className="mb-4">Your BMI indicates obesity.</p>
+          <div className="bg-red-50 p-3 rounded-lg">
+            <p className="font-semibold text-red-800 mb-1">
+              Recommended Program:
+            </p>
+            <p className="text-red-700">
+              <strong>Weight Loss Program</strong> - Focus on increasing daily
+              activity level, low-impact cardio, and gradual strength training
+              with a caloric deficit diet plan.
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -546,13 +866,35 @@ const Dashboard = () => {
           onOk={handleDateModalOk}
           onCancel={handleDateModalCancel}
           centered
-          bodyStyle={{ padding: "24px" }}
+          styles={{ body: { padding: "24px" } }}
         >
           <DatePicker
             size="large"
             style={{ width: "100%", borderRadius: "12px", padding: "12px" }}
             onChange={handleDateChange}
             format={dateFormat}
+          />
+        </Modal>
+
+        {/* Notes Modal */}
+        <Modal
+          title={<span className="text-xl font-medium">Your Notes</span>}
+          open={isNotesModalVisible}
+          onOk={handleNotesModalOk}
+          onCancel={handleNotesModalCancel}
+          width={600}
+          centered
+          styles={{ body: { padding: "24px" } }}
+        >
+          <p className="text-lg font-medium text-purple-900 mb-4">
+            Write down your fitness notes, goals or reminders:
+          </p>
+          <Input.TextArea
+            rows={6}
+            value={userNotes}
+            onChange={(e) => setUserNotes(e.target.value)}
+            placeholder="Start writing your notes here..."
+            style={{ borderRadius: "8px", fontSize: "16px" }}
           />
         </Modal>
 
@@ -574,7 +916,7 @@ const Dashboard = () => {
           <div className="flex flex-col items-center mb-10">
             <Card
               className="w-full md:w-4/5 lg:w-3/4 bg-white rounded-xl shadow-xl transition-all duration-300 hover:shadow-2xl"
-              bodyStyle={{ padding: "28px" }}
+              styles={{ body: { padding: "24px" } }}
             >
               <h1 className="text-2xl font-semibold mb-6 text-gray-800 text-center border-b border-gray-100 pb-4">
                 User Profile
@@ -601,50 +943,106 @@ const Dashboard = () => {
                     <p className="flex items-center text-lg text-gray-700">
                       <UserOutlined className="text-xl text-indigo-500 mr-4" />
                       <span className="font-medium w-32">Name:</span>
-                      <span className="text-gray-800">{userData.name}</span>
+                      {isEditMode ? (
+                        <Input
+                          value={editableUserData.name}
+                          onChange={(e) =>
+                            handleEditFieldChange("name", e.target.value)
+                          }
+                          className="flex-grow"
+                          style={{ maxWidth: "250px" }}
+                        />
+                      ) : (
+                        <span className="text-gray-800">{userData.name}</span>
+                      )}
                     </p>
 
                     <p className="flex items-center text-lg text-gray-700">
                       <CalendarOutlined className="text-xl text-indigo-500 mr-4" />
                       <span className="font-medium w-32">Date of birth:</span>
-                      <span className="text-gray-800">
-                        {userData.dob
-                          ? userData.dob.slice(0, 10)
-                          : "Not specified"}
-                      </span>
-                      <button
-                        onClick={showDateModal}
-                        className="ml-4 text-blue-500 hover:text-blue-700 hover:underline transition-colors duration-200 text-sm cursor-pointer"
-                      >
-                        Edit
-                      </button>
+                      {isEditMode ? (
+                        <DatePicker
+                          defaultValue={
+                            userData.dob
+                              ? moment(userData.dob, dateFormat)
+                              : null
+                          }
+                          format={dateFormat}
+                          onChange={(date, dateString) =>
+                            handleEditFieldChange("dob", dateString)
+                          }
+                          style={{ maxWidth: "250px" }}
+                        />
+                      ) : (
+                        <>
+                          <span className="text-gray-800">
+                            {userData.dob
+                              ? userData.dob.slice(0, 10)
+                              : "Not specified"}
+                          </span>
+                          {!isEditMode && (
+                            <button
+                              onClick={showDateModal}
+                              className="ml-4 text-blue-500 hover:text-blue-700 hover:underline transition-colors duration-200 text-sm cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </>
+                      )}
                     </p>
-
                     <p className="flex items-center text-lg text-gray-700">
                       <LineChartOutlined className="text-xl text-indigo-500 mr-4" />
                       <span className="font-medium w-32">Weight:</span>
-                      <span className="text-gray-800">
-                        {userData.weight} kg
-                      </span>
+                      {isEditMode ? (
+                        <Input
+                          type="number"
+                          value={editableUserData.weight}
+                          onChange={(e) =>
+                            handleEditFieldChange("weight", e.target.value)
+                          }
+                          className="flex-grow"
+                          style={{ maxWidth: "250px" }}
+                          addonAfter="kg"
+                        />
+                      ) : (
+                        <span className="text-gray-800">
+                          {userData.weight} kg
+                        </span>
+                      )}
                     </p>
 
                     <p className="flex items-center text-lg text-gray-700">
                       <ColumnHeightOutlined className="text-xl text-indigo-500 mr-4" />
                       <span className="font-medium w-32">Height:</span>
-                      <span className="text-gray-800">
-                        {userData.height} cm
-                      </span>
+                      {isEditMode ? (
+                        <Input
+                          type="number"
+                          value={editableUserData.height}
+                          onChange={(e) =>
+                            handleEditFieldChange("height", e.target.value)
+                          }
+                          className="flex-grow"
+                          style={{ maxWidth: "250px" }}
+                          addonAfter="cm"
+                        />
+                      ) : (
+                        <span className="text-gray-800">
+                          {userData.height} cm
+                        </span>
+                      )}
                     </p>
 
-                    <Link to="/Notes" className="block">
-                      <p className="flex items-center text-lg text-gray-700 hover:text-indigo-600 transition-colors duration-200">
-                        <FileTextOutlined className="text-xl text-indigo-500 mr-4" />
-                        <span className="font-medium w-32">Your Notes</span>
-                        <span className="text-blue-500 hover:underline">
-                          Check
-                        </span>
-                      </p>
-                    </Link>
+                    <p className="flex items-center text-lg text-gray-700 hover:text-indigo-600 transition-colors duration-200">
+                      <FileTextOutlined className="text-xl text-indigo-500 mr-4" />
+                      <span className="font-medium w-32">Your Notes</span>
+                      <button
+                        onClick={showNotesModal}
+                        className="text-blue-500 hover:underline cursor-pointer"
+                      >
+                        Check
+                      </button>
+                    </p>
 
                     <div className="hidden md:flex items-center text-lg text-gray-700">
                       <IdcardOutlined className="text-xl text-indigo-500 mr-4" />
@@ -660,11 +1058,34 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <Divider className="my-6">
-                <span className="text-base text-gray-500 font-medium px-4">
-                  Edit Profile
-                </span>
-              </Divider>
+              <div className="my-6 text-center">
+                {isEditMode ? (
+                  <div className="space-x-4">
+                    <Button
+                      onClick={saveEditedProfile}
+                      className="bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
+                      style={{ height: "44px" }}
+                    >
+                      Save Changes
+                    </Button>
+                    <Button
+                      onClick={() => setIsEditMode(false)}
+                      className="bg-gray-500 hover:bg-gray-600 text-white font-medium rounded-lg"
+                      style={{ height: "44px" }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => setIsEditMode(true)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg"
+                    style={{ height: "44px" }}
+                  >
+                    Edit Profile
+                  </Button>
+                )}
+              </div>
 
               <div className="px-4">
                 <div className="mb-8">
@@ -825,13 +1246,17 @@ const Dashboard = () => {
               </h1>
 
               <div className="flex flex-col items-center mb-10">
-                <Chart />
+                {/* Pass user body measurements as props to the Chart component */}
+                <Chart
+                  userData={userData}
+                  key={`chart-${userData.neckSize}-${userData.shoulderSize}-${userData.forearmSize}-${userData.bicepsSize}-${userData.hipSize}-${userData.thighSize}-${userData.calvesSize}`}
+                />
               </div>
 
               <div className="flex flex-col items-center">
                 <Card
                   className="w-full md:w-4/5 lg:w-3/4 bg-white rounded-xl shadow-xl"
-                  bodyStyle={{ padding: "28px" }}
+                  styles={{ body: { padding: "24px" } }}
                 >
                   <h2 className="text-2xl font-semibold mb-6 text-gray-800">
                     Calculate BMI
@@ -980,31 +1405,77 @@ const Dashboard = () => {
 
         {/* Health Conditions Modal */}
         <Modal
-          title={<span className="text-xl font-medium">Health Conditions</span>}
+          title={
+            <div className="flex items-center">
+              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mr-3">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 text-red-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
+                </svg>
+              </div>
+              <span className="text-lg font-semibold">
+                Select Health Conditions
+              </span>
+            </div>
+          }
           open={isModalVisible}
           onOk={handleModalOk}
           onCancel={handleModalCancel}
           width={600}
+          className="health-conditions-modal"
           centered
-          bodyStyle={{ padding: "24px" }}
+          styles={{ body: { padding: "24px" } }}
+          okText="Confirm Selections"
+          okButtonProps={{
+            style: { backgroundColor: "#4285F4", borderColor: "#4285F4" },
+            className: "rounded-lg font-medium",
+          }}
+          cancelButtonProps={{ className: "rounded-lg" }}
         >
-          <p className="text-lg font-medium text-purple-900 mb-4">
-            Please select all your health conditions:
-          </p>
-          <p className="text-blue-600 mb-6 text-sm">
-            If your health condition is not listed below, please consult your
-            trainer or doctor!
-          </p>
+          <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+            <p className="text-blue-700 flex items-start">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span>
+                Select from the list below or add your own health condition if
+                it's not listed.
+              </span>
+            </p>
+          </div>
 
           <Select
             mode="multiple"
             allowClear
-            style={{ width: "100%", borderRadius: "8px" }}
-            placeholder="Select health conditions"
-            value={selectedConditions}
+            style={{ width: "100%" }}
+            placeholder="Select your health conditions"
             onChange={handleHealthConditionChange}
+            value={selectedConditions}
+            maxTagCount="responsive"
+            className="rounded-lg text-base"
             size="large"
-            dropdownStyle={{ borderRadius: "8px" }}
+            listHeight={320}
           >
             {healthConditions.map((condition) => (
               <Option
@@ -1015,6 +1486,53 @@ const Dashboard = () => {
               </Option>
             ))}
           </Select>
+
+          <div className="mt-4 mb-2">
+            <h4 className="text-base font-medium text-gray-700 mb-2">
+              Add a custom health condition
+            </h4>
+            <Space.Compact style={{ width: "100%" }}>
+              <Input
+                placeholder="Enter your health condition"
+                value={customCondition}
+                onChange={(e) => setCustomCondition(e.target.value)}
+                onPressEnter={() =>
+                  customCondition.trim() && handleAddCustomCondition()
+                }
+                size="large"
+                className="rounded-lg"
+              />
+              <Button
+                type="primary"
+                onClick={handleAddCustomCondition}
+                disabled={!customCondition.trim()}
+                size="large"
+                style={{ backgroundColor: "#4285F4", borderColor: "#4285F4" }}
+              >
+                Add
+              </Button>
+            </Space.Compact>
+          </div>
+
+          {customConditions.length > 0 && (
+            <div className="mt-4 p-3 bg-green-50 border border-green-100 rounded-lg animate-fadeIn">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                Your custom health conditions:
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {customConditions.map((condition) => (
+                  <Tag
+                    key={condition.condition_id}
+                    closable
+                    onClose={() => handleRemoveCustomCondition(condition)}
+                    className="px-2 py-1 text-sm rounded-lg bg-blue-100 text-blue-700 border-blue-200"
+                  >
+                    {condition.condition_name}
+                  </Tag>
+                ))}
+              </div>
+            </div>
+          )}
         </Modal>
 
         {/* Body Measurements Modal */}
@@ -1026,7 +1544,7 @@ const Dashboard = () => {
           width={600}
           footer={null}
           centered
-          bodyStyle={{ padding: "24px" }}
+          styles={{ body: { padding: "24px" } }}
         >
           <p className="text-lg font-medium text-purple-900 mb-6">
             Enter your body measurements in centimeters
@@ -1037,13 +1555,13 @@ const Dashboard = () => {
             layout="vertical"
             form={form}
             initialValues={{
-              neck: userData.neckSize,
-              shoulder: userData.shoulderSize,
-              forearm: userData.forearmSize,
-              biceps: userData.bicepsSize,
-              hip: userData.hipSize,
-              thigh: userData.thighSize,
-              claves: userData.calvesSize,
+              neck: userData.neckSize || "",
+              shoulder: userData.shoulderSize || "",
+              forearm: userData.forearmSize || "",
+              biceps: userData.bicepsSize || "",
+              hip: userData.hipSize || "",
+              thigh: userData.thighSize || "",
+              claves: userData.calvesSize || "",
             }}
             onFinish={updateBodyMeasurements}
           >
@@ -1056,10 +1574,15 @@ const Dashboard = () => {
                 rules={[
                   { required: true, message: "Please enter your neck size!" },
                   {
-                    type: "number",
-                    min: 1,
-                    max: 300,
-                    message: "Please enter a valid measurement (1-300 cm)",
+                    validator: (_, value) => {
+                      const num = Number(value);
+                      if (isNaN(num) || num < 20 || num > 100) {
+                        return Promise.reject(
+                          "Please enter a valid measurement (20-100 cm)"
+                        );
+                      }
+                      return Promise.resolve();
+                    },
                   },
                 ]}
               >
@@ -1087,10 +1610,15 @@ const Dashboard = () => {
                     message: "Please enter your shoulder size!",
                   },
                   {
-                    type: "number",
-                    min: 1,
-                    max: 300,
-                    message: "Please enter a valid measurement (1-300 cm)",
+                    validator: (_, value) => {
+                      const num = Number(value);
+                      if (isNaN(num) || num < 30 || num > 200) {
+                        return Promise.reject(
+                          "Please enter a valid measurement (30-200 cm)"
+                        );
+                      }
+                      return Promise.resolve();
+                    },
                   },
                 ]}
               >
@@ -1118,10 +1646,15 @@ const Dashboard = () => {
                     message: "Please enter your forearm size!",
                   },
                   {
-                    type: "number",
-                    min: 1,
-                    max: 300,
-                    message: "Please enter a valid measurement (1-300 cm)",
+                    validator: (_, value) => {
+                      const num = Number(value);
+                      if (isNaN(num) || num < 15 || num > 100) {
+                        return Promise.reject(
+                          "Please enter a valid measurement (15-100 cm)"
+                        );
+                      }
+                      return Promise.resolve();
+                    },
                   },
                 ]}
               >
@@ -1146,10 +1679,15 @@ const Dashboard = () => {
                 rules={[
                   { required: true, message: "Please enter your biceps size!" },
                   {
-                    type: "number",
-                    min: 1,
-                    max: 300,
-                    message: "Please enter a valid measurement (1-300 cm)",
+                    validator: (_, value) => {
+                      const num = Number(value);
+                      if (isNaN(num) || num < 15 || num > 100) {
+                        return Promise.reject(
+                          "Please enter a valid measurement (15-100 cm)"
+                        );
+                      }
+                      return Promise.resolve();
+                    },
                   },
                 ]}
               >
@@ -1172,10 +1710,15 @@ const Dashboard = () => {
                 rules={[
                   { required: true, message: "Please enter your hip size!" },
                   {
-                    type: "number",
-                    min: 1,
-                    max: 300,
-                    message: "Please enter a valid measurement (1-300 cm)",
+                    validator: (_, value) => {
+                      const num = Number(value);
+                      if (isNaN(num) || num < 50 || num > 200) {
+                        return Promise.reject(
+                          "Please enter a valid measurement (50-200 cm)"
+                        );
+                      }
+                      return Promise.resolve();
+                    },
                   },
                 ]}
               >
@@ -1198,10 +1741,15 @@ const Dashboard = () => {
                 rules={[
                   { required: true, message: "Please enter your thigh size!" },
                   {
-                    type: "number",
-                    min: 1,
-                    max: 300,
-                    message: "Please enter a valid measurement (1-300 cm)",
+                    validator: (_, value) => {
+                      const num = Number(value);
+                      if (isNaN(num) || num < 30 || num > 120) {
+                        return Promise.reject(
+                          "Please enter a valid measurement (30-120 cm)"
+                        );
+                      }
+                      return Promise.resolve();
+                    },
                   },
                 ]}
               >
@@ -1226,10 +1774,15 @@ const Dashboard = () => {
                 rules={[
                   { required: true, message: "Please enter your calves size!" },
                   {
-                    type: "number",
-                    min: 1,
-                    max: 300,
-                    message: "Please enter a valid measurement (1-300 cm)",
+                    validator: (_, value) => {
+                      const num = Number(value);
+                      if (isNaN(num) || num < 20 || num > 80) {
+                        return Promise.reject(
+                          "Please enter a valid measurement (20-80 cm)"
+                        );
+                      }
+                      return Promise.resolve();
+                    },
                   },
                 ]}
               >

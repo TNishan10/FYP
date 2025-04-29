@@ -129,7 +129,9 @@ const VerifyEmail = () => {
 
   // Initialize with email from localStorage if available
   useEffect(() => {
-    const savedEmail = localStorage.getItem("pendingVerificationEmail");
+    const savedEmail =
+      sessionStorage.getItem("pendingVerificationEmail") ||
+      localStorage.getItem("pendingVerificationEmail");
     if (savedEmail) {
       setResendEmail(savedEmail);
     }

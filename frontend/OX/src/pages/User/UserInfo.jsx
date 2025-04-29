@@ -262,18 +262,35 @@ const UserInfo = () => {
       return Promise.reject("Please select your date of birth");
     }
 
-    const today = moment();
-    const age = today.diff(value, "years");
+    try {
+      // Make sure we're working with clean date objects
+      const today = moment();
 
-    if (age < 12) {
-      return Promise.reject("You must be at least 12 years old");
-    }
+      // Explicitly handle the date format to avoid any timezone issues
+      const birthDate = moment(value.format("YYYY-MM-DD"));
 
-    if (age > 120) {
+      console.log("Today:", today.format("YYYY-MM-DD"));
+      console.log("Birth date:", birthDate.format("YYYY-MM-DD"));
+
+      // Calculate age - using precise method with startOf day to avoid time issues
+      const yearsAge = today.diff(birthDate, "years");
+      console.log("Calculated age:", yearsAge);
+
+      if (yearsAge < 12) {
+        return Promise.reject(
+          `You must be at least 12 years old (calculated age: ${yearsAge})`
+        );
+      }
+
+      if (yearsAge > 120) {
+        return Promise.reject("Please enter a valid date of birth");
+      }
+
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Error validating date:", error);
       return Promise.reject("Please enter a valid date of birth");
     }
-
-    return Promise.resolve();
   };
 
   // Submit user information and health conditions
@@ -381,12 +398,10 @@ const UserInfo = () => {
             draggable: true,
             progress: undefined,
           });
-
-          // Navigate to the home page or dashboard
-          navigate("/");
         } else {
           toast.error("Failed to save user information");
         }
+        navigate("/");
       } catch (apiError) {
         console.error("API Error:", apiError);
 
@@ -399,10 +414,12 @@ const UserInfo = () => {
         toast.error(
           apiError.response?.data?.message || "Failed to save user information"
         );
+        navigate("/");
       }
     } catch (error) {
       console.error("Error saving user information:", error);
       toast.error("An error occurred while saving your information");
+      navigate("/");
     } finally {
       setLoading(false);
     }

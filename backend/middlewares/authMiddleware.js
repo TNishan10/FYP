@@ -1,5 +1,6 @@
 import JWT from "jsonwebtoken";
 import con from "../server.js";
+import { body, validationResult } from "express-validator";
 
 export const requireSignIn = async (req, res, next) => {
   try {
@@ -70,3 +71,39 @@ export const isAdmin = async (req, res, next) => {
     });
   }
 };
+
+// Validation middleware for exercise entries
+export const validateExerciseEntry = [
+  // Required fields validation
+  body("name").notEmpty().withMessage("Exercise name is required"),
+  body("muscle_group").notEmpty().withMessage("Muscle group is required"),
+
+  // Set/rep ranges validation (for strength exercises)
+  body("sets")
+    .optional()
+    .isInt({ min: 1, max: 20 })
+    .withMessage("Sets must be between 1 and 20"),
+  body("reps")
+    .optional()
+    .isInt({ min: 1, max: 200 })
+    .withMessage("Reps must be between 1 and 200"),
+
+  // Weight validation
+  body("weight")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Weight must be a positive number"),
+
+  // Process validation results
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors: errors.array(),
+      });
+    }
+    next();
+  },
+];

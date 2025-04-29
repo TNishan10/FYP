@@ -89,6 +89,7 @@ const RegisterForm = ({ onSubmit, isSubmitting }) => {
       email: validateField("email", formData.email),
       password: validateField("password", formData.password),
     };
+    
 
     setErrors(newErrors);
 

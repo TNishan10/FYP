@@ -741,3 +741,138 @@ export const updateWorkoutDayExercises = async (req, res) => {
     });
   }
 };
+
+// Create a new exercise
+export const createExerciseController = async (req, res) => {
+  try {
+    const { name, muscle_group, equipment, description, exercise_type } =
+      req.body;
+
+    // Check if exercise with this name already exists
+    const existingExerciseResult = await con.query(
+      "SELECT exercise_id FROM exercises WHERE name = $1 AND muscle_group = $2 LIMIT 1",
+      [name, muscle_group]
+    );
+
+    if (existingExerciseResult.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "An exercise with this name already exists for this muscle group",
+      });
+    }
+
+    // Insert the new exercise
+    const result = await con.query(
+      `INSERT INTO exercises (name, muscle_group, equipment, description) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING *`,
+      [name, muscle_group, equipment || null, description || null]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Exercise created successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error creating exercise:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating exercise",
+      error: error.message,
+    });
+  }
+};
+
+export const updateExerciseController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, muscle_group, equipment, description } = req.body;
+
+    // Check if exercise exists
+    const exerciseResult = await con.query(
+      "SELECT * FROM exercises WHERE exercise_id = $1",
+      [id]
+    );
+
+    if (exerciseResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Exercise not found",
+      });
+    }
+
+    // Check if the updated name would conflict with another exercise
+    if (name && muscle_group) {
+      const existingExerciseResult = await con.query(
+        "SELECT exercise_id FROM exercises WHERE name = $1 AND muscle_group = $2 AND exercise_id != $3 LIMIT 1",
+        [name, muscle_group, id]
+      );
+
+      if (existingExerciseResult.rows.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Another exercise with this name already exists for this muscle group",
+        });
+      }
+    }
+
+    // Update the exercise
+    const updateFields = [];
+    const values = [];
+    let paramCount = 1;
+
+    if (name !== undefined) {
+      updateFields.push(`name = $${paramCount++}`);
+      values.push(name);
+    }
+
+    if (muscle_group !== undefined) {
+      updateFields.push(`muscle_group = $${paramCount++}`);
+      values.push(muscle_group);
+    }
+
+    if (equipment !== undefined) {
+      updateFields.push(`equipment = $${paramCount++}`);
+      values.push(equipment);
+    }
+
+    if (description !== undefined) {
+      updateFields.push(`description = $${paramCount++}`);
+      values.push(description);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No fields to update",
+      });
+    }
+
+    values.push(id);
+
+    const result = await con.query(
+      `UPDATE exercises 
+       SET ${updateFields.join(", ")}, 
+           updated_at = CURRENT_TIMESTAMP
+       WHERE exercise_id = $${paramCount}
+       RETURNING *`,
+      values
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Exercise updated successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Error updating exercise:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating exercise",
+      error: error.message,
+    });
+  }
+};

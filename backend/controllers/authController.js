@@ -33,7 +33,7 @@ export const registerController = async (req, res) => {
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
     // Insert user with verification token - use the correct column names
     const result = await con.query(
@@ -227,10 +227,28 @@ export const verifyCode = async (req, res) => {
 };
 
 // Update login controller to use the correct column names
+const loginAttempts = {};
 export const loginController = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Check for too many failed attempts
+    if (loginAttempts[email] && loginAttempts[email].count >= 5) {
+      const lockoutTime = 15 * 60 * 1000; // 15 minutes
+      const now = Date.now();
+
+      if (now - loginAttempts[email].timestamp < lockoutTime) {
+        return res.status(429).json({
+          success: false,
+          message: "Too many failed attempts. Please try again later.",
+          lockoutRemaining:
+            lockoutTime - (now - loginAttempts[email].timestamp),
+        });
+      } else {
+        // Reset attempts after lockout period
+        delete loginAttempts[email];
+      }
+    }
     // Check if user exists
     const result = await con.query(
       "SELECT * FROM users WHERE user_email = $1",
@@ -238,9 +256,10 @@ export const loginController = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
+      incrementLoginAttempt(email);
+      return res.status(401).json({
         success: false,
-        message: "User not found",
+        message: "Invalid email or password",
       });
     }
 
@@ -250,12 +269,13 @@ export const loginController = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.user_password);
 
     if (!isMatch) {
+      incrementLoginAttempt(email);
       return res.status(401).json({
         success: false,
         message: "Invalid credentials",
       });
     }
-
+    delete loginAttempts[email];
     // Update last login timestamp AFTER user is found and validated
     const updateLastLogin = `UPDATE public."users" SET last_login_at = NOW() WHERE user_id = $1`;
     await con.query(updateLastLogin, [user.user_id]);
@@ -294,6 +314,18 @@ export const loginController = async (req, res) => {
     });
   }
 };
+
+function incrementLoginAttempt(email) {
+  if (!loginAttempts[email]) {
+    loginAttempts[email] = {
+      count: 0,
+      timestamp: Date.now(),
+    };
+  }
+
+  loginAttempts[email].count += 1;
+  loginAttempts[email].timestamp = Date.now();
+}
 
 // Add this function to your authController.js
 

@@ -1,11 +1,64 @@
 import React, { useState, useEffect } from "react";
 import { Table, Card, Progress, Spin } from "antd";
 import axios from "axios";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
 
-const Chart = () => {
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+const Chart = ({ userData }) => {
   const [userMetrics, setUserMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [chartData, setChartData] = useState({
+    labels: [],
+    datasets: [],
+  });
+
+  // Update chart whenever userData changes
+  useEffect(() => {
+    if (userData) {
+      // Extract the measurement data from userData
+      const measurements = {
+        Neck: userData?.neckSize || 0,
+        Shoulders: userData?.shoulderSize || 0,
+        Forearms: userData?.forearmSize || 0,
+        Biceps: userData?.bicepsSize || 0,
+        Hip: userData?.hipSize || 0,
+        Thigh: userData?.thighSize || 0,
+        Calves: userData?.calvesSize || 0,
+      };
+
+      // Update chart data
+      setChartData({
+        labels: Object.keys(measurements),
+        datasets: [
+          {
+            label: "Body Measurements (cm)",
+            data: Object.values(measurements),
+            backgroundColor: "rgba(79, 70, 229, 0.6)",
+            borderColor: "rgba(79, 70, 229, 1)",
+            borderWidth: 1,
+          },
+        ],
+      });
+    }
+  }, [userData]);
 
   useEffect(() => {
     const fetchUserMetrics = async () => {
@@ -187,27 +240,70 @@ const Chart = () => {
     },
   ];
 
-  return (
-    <Card className="p-4 bg-white rounded-3xl shadow-md">
-      <h2 className="text-xl font-semibold mb-4">
-        Body Measurements Comparison
-      </h2>
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: "Size (cm)",
+        },
+      },
+    },
+    plugins: {
+      legend: {
+        display: true,
+        position: "top",
+      },
+      title: {
+        display: true,
+        text: "Body Measurements",
+        font: {
+          size: 16,
+        },
+      },
+    },
+  };
 
-      {loading ? (
-        <div className="flex justify-center items-center h-[300px]">
-          <Spin size="large" />
+  return (
+    <div className="space-y-6">
+      {userData && (
+        <div className="w-full h-96 bg-white p-4 rounded-xl shadow-lg mb-6">
+          {Object.values(userData).some(Boolean) ? (
+            <Bar data={chartData} options={options} />
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <p className="text-gray-500 text-lg">
+                No measurement data available
+              </p>
+            </div>
+          )}
         </div>
-      ) : error ? (
-        <div className="text-red-500 text-center py-10">{error}</div>
-      ) : (
-        <Table
-          dataSource={userMetrics}
-          columns={columns}
-          pagination={false}
-          className="border rounded-lg"
-        />
       )}
-    </Card>
+
+      <Card className="p-4 bg-white rounded-3xl shadow-md">
+        <h2 className="text-xl font-semibold mb-4">
+          Body Measurements Comparison
+        </h2>
+
+        {loading ? (
+          <div className="flex justify-center items-center h-[300px]">
+            <Spin size="large" />
+          </div>
+        ) : error ? (
+          <div className="text-red-500 text-center py-10">{error}</div>
+        ) : (
+          <Table
+            dataSource={userMetrics}
+            columns={columns}
+            pagination={false}
+            className="border rounded-lg"
+          />
+        )}
+      </Card>
+    </div>
   );
 };
 

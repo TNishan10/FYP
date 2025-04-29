@@ -1,4 +1,5 @@
 import express from "express";
+import { validateExerciseEntry } from "../middlewares/authMiddleware.js";
 
 import {
   getAllUsers,
@@ -95,12 +96,13 @@ import {
 } from "../controllers/WeightController.js";
 
 import {
+  createExerciseController,
+  updateExerciseController,
   getExercises,
   getMuscleGroups,
   getUserExerciseLogs,
   logExercise,
   removeExerciseLog,
-  // New workout day functions
   createWorkoutDay,
   getWorkoutDays,
   addExercisesToWorkoutDay,
@@ -367,6 +369,18 @@ router.delete(
 // Exercise Tracking Routes
 router.get("/exercises/list", getExercises);
 router.get("/exercises/muscle-groups", getMuscleGroups);
+router.post(
+  "/exercises/create",
+  requireSignIn,
+  validateExerciseEntry,
+  createExerciseController
+);
+router.put(
+  "/exercises/update/:id",
+  requireSignIn,
+  validateExerciseEntry,
+  updateExerciseController
+);
 router.get("/exercises/user/:userId", requireSignIn, getUserExerciseLogs);
 router.post("/exercises/log/:userId", requireSignIn, logExercise);
 router.delete(

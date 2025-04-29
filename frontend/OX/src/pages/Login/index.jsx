@@ -16,6 +16,7 @@ const Login = () => {
   const [forgotPasswordModalVisible, setForgotPasswordModalVisible] =
     useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [lockoutRemaining, setLockoutRemaining] = useState(0);
 
   // Modal state
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
