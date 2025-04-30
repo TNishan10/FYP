@@ -553,7 +553,6 @@ export const updateTrainingProgram = async (req, res) => {
   }
 };
 
-// Delete a training program
 export const deleteTrainingProgram = async (req, res) => {
   try {
     const { id } = req.params;
@@ -573,11 +572,6 @@ export const deleteTrainingProgram = async (req, res) => {
 
     // Begin transaction
     await con.query("BEGIN");
-
-    // Delete from featured if it was featured
-    await con.query(`DELETE FROM featured_programs WHERE program_id = $1`, [
-      id,
-    ]);
 
     // Delete workout days (will cascade delete exercises)
     await con.query(`DELETE FROM program_workout_days WHERE program_id = $1`, [
